@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "pet-sitter"
+version = "0.1.0"
+description = ""
+authors = ["laurencecnerual <47619680+laurencecnerual@users.noreply.github.com>"]
+readme = "README.md"
+packages = [
+  { include = "pet-sitter" }
+]
+
+[tool.poetry.scripts]
+start = "pet-sitter.main:start"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = "^0.115.5"
+uvicorn = {extras = ["standard"], version = "^0.32.0"}
+tortoise-orm = {extras = ["asyncpg"], version = "^0.21.7"}
+python-dotenv = "^1.0.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

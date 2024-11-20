@@ -1,5 +1,22 @@
 from tortoise import fields, models # type: ignore
+from enum import Enum
 ## DO ENUM STUFF: services, animals, sitter vs owner
+
+class InquiryStatus(Enum):
+    REQUESTED = "requested"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+class AnimalType(Enum):
+  DOG = "dog"
+  CAT = "cat"
+  FISH = "fish"
+  RABBIT = "rabbit"
+  BIRD = "bird"
+
+class UserType(Enum):
+  OWNER = "owner"
+  SITTER = "sitter"
 
 class Appuser(models.Model):
   id = fields.IntField(primary_key=True)
@@ -22,13 +39,13 @@ class Appuser(models.Model):
 
 class Owner(models.Model):
   id = fields.IntField(primary_key=True)
-  aggregate_owner_rating = fields.FloatField(null=True)
+  average_owner_rating = fields.FloatField(null=True)
   profile_bio = fields.TextField(null=True)
   bio_picture_src_list = fields.TextField(null=True)
 
 class Sitter(models.Model):
   id = fields.IntField(primary_key=True)
-  aggregate_sitter_rating = fields.FloatField(null=True)
+  average_sitter_rating = fields.FloatField(null=True)
   profile_bio = fields.TextField(null=True)
   bio_picture_src_list = fields.TextField(null=True)
   sitter_house_ok = fields.BooleanField(default=False)
@@ -43,7 +60,7 @@ class Sitter(models.Model):
 class Pet(models.Model):
   id = fields.IntField(primary_key=True)
   name = fields.CharField()
-  type_of_animal = fields.CharField()
+  type_of_animal = fields.CharEnumField(AnimalType)
   subtype = fields.CharField(null=True)
   weight = fields.FloatField(null=True)
   birthday = fields.DateField()
@@ -56,15 +73,16 @@ class Pet(models.Model):
 class Availability(models.Model):
   id = fields.IntField(primary_key=True)
   appuser_id = fields.IntField()
+  appuser_type = fields.CharEnumField(UserType)
   start_date = fields.DateField()
   end_date = fields.DateField()
 
 class Review(models.Model):
   id = fields.IntField(primary_key=True)
   author_appuser_id = fields.ForeignKeyField("models.Appuser", related_name="id")
-  review_type = fields.CharField()  #enums
+  recipient_appuser_type = fields.CharEnumField(UserType)
   comment = fields.TextField(null=True)
-  score = fields.FloatField(null=True)
+  score = fields.IntField(null=True)
   recipient_appuser_id = fields.ForeignKeyField("models.Appuser", related_name="id")
   submission_date = fields.DatetimeField(auto_now_add=True)
 
@@ -72,10 +90,11 @@ class Inquiry(models.Model):
   id = fields.IntField(primary_key=True)
   owner_appuser_id = fields.ForeignKeyField("models.Appuser", related_name="id")
   sitter_appuser_id = fields.ForeignKeyField("models.Appuser", related_name="id")
-  inquiry_status = fields.CharField(default="REQUESTED")
+  inquiry_status = fields.CharEnumField(InquiryStatus, default=InquiryStatus.REQUESTED)
   start_date = fields.DateField()
   end_date = fields.DateField()
   desired_service = fields.CharField()
+  pet_id_list = fields.CharField()
   additional_info = fields.TextField(null=True)
   inquiry_submitted = fields.DatetimeField(auto_now_add=True)
   inquiry_finalized = fields.DatetimeField(null=True)

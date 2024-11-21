@@ -1,15 +1,15 @@
 [tool.poetry]
-name = "pet-sitter"
+name = "pet_sitter"
 version = "0.1.0"
 description = ""
 authors = ["laurencecnerual <47619680+laurencecnerual@users.noreply.github.com>"]
 readme = "README.md"
 packages = [
-  { include = "pet-sitter" }
+  { include = "pet_sitter" }
 ]
 
 [tool.poetry.scripts]
-start = "pet-sitter.main:start"
+start = "pet_sitter.main:start"
 
 [tool.poetry.dependencies]
 python = "^3.12"

@@ -1,10 +1,13 @@
 #start server from root (backend) folder with "poetry run start"
-from fastapi import FastAPI # type: ignore
-import uvicorn # type: ignore
-from tortoise import Tortoise # type: ignore
-from pydantic import BaseModel # type: ignore
-DATABASE_URL = "postgres://postgres:codechrysalis@localhost:5432/petsitter"
+from fastapi import FastAPI 
+import uvicorn 
+from tortoise import Tortoise 
+from pydantic import BaseModel 
+from dotenv import load_dotenv
+import os
+import pet_sitter.models as models
 
+load_dotenv()
 app = FastAPI()   
 
 @app.get("/") 
@@ -12,8 +15,10 @@ async def main_route():
   return "Welcome to PetSitter!"
 
 @app.post("/signup") 
-async def sign_user_up():     
-  return "Thanks for signing up!"
+async def sign_user_up():  
+  user = await models.Appuser.create()
+  # return "Thanks for signing up!"
+  return {"status":"ok"}
 
 @app.post("/login") 
 async def log_user_in():     
@@ -50,7 +55,7 @@ async def update_inquiry_status(id: int):
 @app.on_event("startup")
 async def startup():
     # Initialize Tortoise ORM with the database connection
-    await Tortoise.init(db_url=DATABASE_URL, modules={"models": ["pet-sitter.models"]})
+    await Tortoise.init(db_url=os.getenv("DATABASE_URL"), modules={"models": ["pet-sitter.models"]})
     await Tortoise.generate_schemas()
 
 @app.on_event("shutdown")

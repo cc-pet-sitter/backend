@@ -55,7 +55,7 @@ async def update_inquiry_status(id: int):
 @app.on_event("startup")
 async def startup():
     # Initialize Tortoise ORM with the database connection
-    await Tortoise.init(db_url=os.getenv("DATABASE_URL"), modules={"models": ["pet-sitter.models"]})
+    await Tortoise.init(db_url=os.getenv("DATABASE_URL"), modules={"models": ["pet_sitter.models"]})
     await Tortoise.generate_schemas()
 
 @app.on_event("shutdown")
@@ -65,4 +65,4 @@ async def shutdown():
 
 def start():
     """Launched with poetry run start at root level"""
-    uvicorn.run("pet-sitter.main:app", port=8000, host="0.0.0.0", reload=True)
+    uvicorn.run("pet_sitter.main:app", port=8000, host="0.0.0.0", reload=True)

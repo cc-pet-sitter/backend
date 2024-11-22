@@ -65,45 +65,52 @@ class UpdateInquiryStatusBody(BaseModel):
 async def main_route():     
   return "Welcome to PetSitter!"
 
-@app.post("/signup") 
+@app.post("/signup", status_code=201) 
 async def sign_user_up(reqBody: SignUpBody):  
-  await models.Appuser.create(email=reqBody.email)
-  return {"status":"ok"}
+  user = await models.Appuser.create(email=reqBody.email)
+  if user:
+    return {"status":"ok"}
+  else:
+    raise HTTPException(status_code=500, error=f'Failed to Add User')
 
-@app.post("/login") 
+@app.post("/login", status_code=200) 
 async def log_user_in(reqBody: LogInBody):  
   userArray = await models.Appuser.filter(email=reqBody.email)
-  return userArray[0]
+  print(userArray)
+  if userArray:
+    return userArray[0]
+  else:
+    raise HTTPException(status_code=404, error=f'User Not Found')
 
-@app.get("/appuser-extended/{id}") 
+@app.get("/appuser-extended/{id}", status_code=200) 
 async def get_detailed_user_info_by_id(id: int):     
   return "Here is the appuser you asked for + owner and sitter data!"
 
-@app.post("/appuser-extended/{id}") 
+@app.post("/appuser-extended/{id}", status_code=200) 
 async def set_user_info(id: int, appuserReqBody: UpdateAppuserBody, sitterReqBody: SetSitterBody, ownerReqBody: SetOwnerBody):     
   return "Here is your updated appuser + owner and sitter data!"
 
-@app.get("/appuser-sitters") 
+@app.get("/appuser-sitters", status_code=200) 
 async def get_all_matching_sitters(sitter_house_ok: bool, owner_house_ok: bool, visit_ok: bool, dogs_ok: bool, cats_ok: bool, fish_ok: bool, birds_ok: bool, rabbits_ok: bool):     
   return "All these sitters are available to help!"
 
-@app.get("/appuser/{id}/inquiry") 
+@app.get("/appuser/{id}/inquiry", status_code=200) 
 async def get_all_relevant_inquiries_for_user(id: int):     
   return "These are the inquiries for your user role!"
 
-@app.get("/inquiry/{id}") 
+@app.get("/inquiry/{id}", status_code=200) 
 async def get_inquiry_by_id(id: int):     
   return "Here is the inquiry you asked for!"
 
-@app.post("/inquiry") 
+@app.post("/inquiry", status_code=201) 
 async def create_inquiry(reqBody: CreateInquiryBody):   
   inquiry = await models.Inquiry.create(**reqBody.dict())  
   if inquiry:
     return inquiry
   else:
-    raise HTTPException(status_code=404, detail=f'Failed to add the inquiry')
+    raise HTTPException(status_code=500, error=f'Failed to Add Inquiry')
 
-@app.patch("/inquiry/{id}") 
+@app.patch("/inquiry/{id}", status_code=200) 
 async def update_inquiry_status(id: int):     
   return "Inquiry status updated as requested!"
 

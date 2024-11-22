@@ -71,16 +71,15 @@ async def sign_user_up(reqBody: SignUpBody):
   if user:
     return {"status":"ok"}
   else:
-    raise HTTPException(status_code=500, error=f'Failed to Add User')
+    raise HTTPException(status_code=500, detail=f'Failed to Add User')
 
 @app.post("/login", status_code=200) 
 async def log_user_in(reqBody: LogInBody):  
   userArray = await models.Appuser.filter(email=reqBody.email)
-  print(userArray)
   if userArray:
     return userArray[0]
   else:
-    raise HTTPException(status_code=404, error=f'User Not Found')
+    raise HTTPException(status_code=404, detail=f'User Not Found')
 
 @app.get("/appuser-extended/{id}", status_code=200) 
 async def get_detailed_user_info_by_id(id: int):     
@@ -88,6 +87,7 @@ async def get_detailed_user_info_by_id(id: int):
 
 @app.post("/appuser-extended/{id}", status_code=200) 
 async def set_user_info(id: int, appuserReqBody: UpdateAppuserBody, sitterReqBody: SetSitterBody, ownerReqBody: SetOwnerBody):     
+  #appuser = await
   return "Here is your updated appuser + owner and sitter data!"
 
 @app.get("/appuser-sitters", status_code=200) 
@@ -108,23 +108,31 @@ async def create_inquiry(reqBody: CreateInquiryBody):
   if inquiry:
     return inquiry
   else:
-    raise HTTPException(status_code=500, error=f'Failed to Add Inquiry')
+    raise HTTPException(status_code=500, detail=f'Failed to Add Inquiry')
 
 @app.patch("/inquiry/{id}", status_code=200) 
-async def update_inquiry_status(id: int):     
-  return "Inquiry status updated as requested!"
+async def update_inquiry_status(id: int, reqBody: UpdateInquiryStatusBody):  
+  inquiryArray = await models.Inquiry.filter(id=id) 
+  if inquiryArray:
+    inquiry = inquiryArray[0]
+    inquiry.inquiry_status = reqBody.inquiry_status
+    await inquiry.save()
+    updatedInquiry = await models.Inquiry.get(id=id)
+    return updatedInquiry
+  else:
+    raise HTTPException(status_code=404, detail=f'Inquiry Not Found')
 
 @app.on_event("startup")
 async def startup():
-    # Initialize Tortoise ORM with the database connection
-    await Tortoise.init(db_url=os.getenv("DATABASE_URL"), modules={"models": ["pet_sitter.models"]})
-    await Tortoise.generate_schemas()
+  # Initialize Tortoise ORM with the database connection
+  await Tortoise.init(db_url=os.getenv("DATABASE_URL"), modules={"models": ["pet_sitter.models"]})
+  await Tortoise.generate_schemas()
 
 @app.on_event("shutdown")
 async def shutdown():
-    # Close the Tortoise connection when shutting down the app
-    await Tortoise.close_connections()
+  # Close the Tortoise connection when shutting down the app
+  await Tortoise.close_connections()
 
 def start():
-    """Launched with poetry run start at root level"""
-    uvicorn.run("pet_sitter.main:app", port=8000, host="0.0.0.0", reload=True)
+  """Launched with poetry run start at root level"""
+  uvicorn.run("pet_sitter.main:app", port=8000, host="0.0.0.0", reload=True)

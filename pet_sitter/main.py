@@ -100,7 +100,11 @@ async def get_all_relevant_inquiries_for_user(id: int):
 
 @app.get("/inquiry/{id}", status_code=200) 
 async def get_inquiry_by_id(id: int):     
-  return "Here is the inquiry you asked for!"
+  inquiryArray = await models.Inquiry.filter(id=id)
+  if inquiryArray:
+    return inquiryArray[0]
+  else:
+    raise HTTPException(status_code=404, detail=f'Inquiry Not Found')
 
 @app.post("/inquiry", status_code=201) 
 async def create_inquiry(reqBody: CreateInquiryBody):   

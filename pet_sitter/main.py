@@ -61,6 +61,19 @@ class CreateInquiryBody(BaseModel):
 class UpdateInquiryStatusBody(BaseModel):
   inquiry_status: str
 
+# class GetRelevantInquiriesBody(BaseModel):
+#   user_type: str
+
+class SitterSearchBody(BaseModel):
+  sitter_house_ok: bool
+  owner_house_ok: bool
+  visit_ok: bool
+  dogs_ok: bool
+  cats_ok: bool
+  fish_ok: bool
+  birds_ok: bool
+  rabbits_ok: bool
+
 @app.get("/") 
 async def main_route():     
   return "Welcome to PetSitter!"
@@ -91,12 +104,25 @@ async def set_user_info(id: int, appuserReqBody: UpdateAppuserBody, sitterReqBod
   return "Here is your updated appuser + owner and sitter data!"
 
 @app.get("/appuser-sitters", status_code=200) 
-async def get_all_matching_sitters(sitter_house_ok: bool, owner_house_ok: bool, visit_ok: bool, dogs_ok: bool, cats_ok: bool, fish_ok: bool, birds_ok: bool, rabbits_ok: bool):     
+async def get_all_matching_sitters(reqBody: SitterSearchBody):     
   return "All these sitters are available to help!"
 
 @app.get("/appuser/{id}/inquiry", status_code=200) 
-async def get_all_relevant_inquiries_for_user(id: int):     
-  return "These are the inquiries for your user role!"
+async def get_all_relevant_inquiries_for_user(id: int, user_type: str):
+  if user_type == "SITTER":
+      sitterInquiryArray = await models.Inquiry.filter(sitter_appuser_id=id)
+      if sitterInquiryArray:
+        return sitterInquiryArray
+      else:
+        raise HTTPException(status_code=404, detail=f'No Sitter Inquiries Found')
+  elif  user_type == "OWNER":
+      ownerInquiryArray = await models.Inquiry.filter(owner_appuser_id=id)
+      if ownerInquiryArray:
+        return ownerInquiryArray
+      else:
+        raise HTTPException(status_code=404, detail=f'No Owner Inquiries Found')
+  else:
+    raise HTTPException(status_code=400, detail=f'No User Type Received')
 
 @app.get("/inquiry/{id}", status_code=200) 
 async def get_inquiry_by_id(id: int):     

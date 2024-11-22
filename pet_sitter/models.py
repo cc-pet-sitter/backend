@@ -2,9 +2,9 @@ from tortoise import fields, models # type: ignore
 from enum import Enum
 
 class InquiryStatus(Enum):
-    REQUESTED = "requested"
-    APPROVED = "approved"
-    REJECTED = "rejected"
+  REQUESTED = "requested"
+  APPROVED = "approved"
+  REJECTED = "rejected"
 
 class AnimalType(Enum):
   DOG = "dog"

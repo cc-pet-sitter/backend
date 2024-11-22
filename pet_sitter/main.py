@@ -61,19 +61,6 @@ class CreateInquiryBody(BaseModel):
 class UpdateInquiryStatusBody(BaseModel):
   inquiry_status: str
 
-# class GetRelevantInquiriesBody(BaseModel):
-#   user_type: str
-
-class SitterSearchBody(BaseModel):
-  sitter_house_ok: bool
-  owner_house_ok: bool
-  visit_ok: bool
-  dogs_ok: bool
-  cats_ok: bool
-  fish_ok: bool
-  birds_ok: bool
-  rabbits_ok: bool
-
 @app.get("/") 
 async def main_route():     
   return "Welcome to PetSitter!"
@@ -103,9 +90,23 @@ async def set_user_info(id: int, appuserReqBody: UpdateAppuserBody, sitterReqBod
   #appuser = await
   return "Here is your updated appuser + owner and sitter data!"
 
+# need to address prefecture and city_ward match
 @app.get("/appuser-sitters", status_code=200) 
-async def get_all_matching_sitters(reqBody: SitterSearchBody):     
-  return "All these sitters are available to help!"
+async def get_all_matching_sitters(sitter_house_ok: bool, owner_house_ok: bool, visit_ok: bool, dogs_ok: bool, cats_ok: bool, fish_ok: bool, birds_ok: bool, rabbits_ok: bool):     
+      matchingSitterArray = await models.Sitter.filter(
+        sitter_house_ok=sitter_house_ok, 
+        owner_house_ok=owner_house_ok, 
+        visit_ok=visit_ok, 
+        dogs_ok=dogs_ok, 
+        cats_ok=cats_ok, 
+        fish_ok=fish_ok, 
+        birds_ok=birds_ok, 
+        rabbits_ok=rabbits_ok
+        ).select_related("appuser") ## Ex. Can use matchingSitterArray[0].appuser.email to get email from Appuser table for one user
+      if matchingSitterArray:
+        return matchingSitterArray
+      else:
+        raise HTTPException(status_code=404, detail=f'No Sitters Found')
 
 @app.get("/appuser/{id}/inquiry", status_code=200) 
 async def get_all_relevant_inquiries_for_user(id: int, user_type: str):

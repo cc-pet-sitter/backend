@@ -10,19 +10,25 @@ import pet_sitter.models as models
 load_dotenv()
 app = FastAPI()   
 
+class SignUpBody(BaseModel):
+  email: str
+
+class LogInBody(BaseModel):
+  email: str
+
 @app.get("/") 
 async def main_route():     
   return "Welcome to PetSitter!"
 
 @app.post("/signup") 
-async def sign_user_up():  
-  user = await models.Appuser.create()
-  # return "Thanks for signing up!"
+async def sign_user_up(reqBody: SignUpBody):  
+  await models.Appuser.create(email=reqBody.email)
   return {"status":"ok"}
 
 @app.post("/login") 
-async def log_user_in():     
-  return "Thanks for logging in!"
+async def log_user_in(reqBody: LogInBody):  
+  userArray = await models.Appuser.filter(email=reqBody.email)
+  return userArray[0]
 
 @app.get("/appuser-extended/{id}") 
 async def get_detailed_user_info_by_id(id: int):     

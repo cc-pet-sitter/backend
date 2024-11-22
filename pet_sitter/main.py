@@ -6,12 +6,9 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 import os
 import pet_sitter.models as models
-# DATABASE_URL = "postgres://postgres:codechrysalis@localhost:5432/petsitter"
 
 load_dotenv()
 app = FastAPI()   
-
-print(os.getenv("DATABASE_URL"))
 
 @app.get("/") 
 async def main_route():     

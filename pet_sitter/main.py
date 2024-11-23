@@ -1,72 +1,21 @@
 #start server from root (backend) folder with "poetry run start"
-from fastapi import FastAPI, HTTPException
-import uvicorn 
-from tortoise import Tortoise 
-from pydantic import BaseModel 
-from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException # type: ignore
+import uvicorn # type: ignore
+from tortoise import Tortoise # type: ignore
+from dotenv import load_dotenv # type: ignore
 import os
 import pet_sitter.models as models
-from datetime import datetime
+import pet_sitter.basemodels as basemodels
 
 load_dotenv()
 app = FastAPI()   
-
-class SignUpBody(BaseModel):
-  email: str
-
-class LogInBody(BaseModel):
-  email: str
-
-class UpdateAppuserBody(BaseModel):
-  firstname: str | None
-  lastname: str | None
-  email: str | None
-  profile_picture_src: str | None
-  prefecture: str | None
-  city_ward: str | None
-  street_address: str | None
-  postal_code: str | None
-  account_language: str | None
-  english_ok: bool | None
-  japanese_ok: bool | None
-
-class SetSitterBody(BaseModel):
-  average_sitter_rating: float | None
-  profile_bio: str | None
-  bio_picture_src_list: str | None
-  sitter_house_ok: bool | None
-  owner_house_ok: bool | None
-  dogs_ok: bool | None
-  cats_ok: bool | None
-  fish_ok: bool | None
-  birds_ok: bool | None
-  rabbits_ok: bool | None
-  appuser_id: int
-
-class SetOwnerBody(BaseModel):
-  average_sitter_rating: float | None
-  profile_bio: str | None
-  bio_picture_src_list: str | None
-  appuser_id: int
-
-class CreateInquiryBody(BaseModel):
-  owner_appuser_id: int
-  sitter_appuser_id: int
-  start_date: datetime
-  end_date: datetime
-  desired_service: str
-  pet_id_list: str
-  additional_info: str | None
-
-class UpdateInquiryStatusBody(BaseModel):
-  inquiry_status: str
 
 @app.get("/") 
 async def main_route():     
   return "Welcome to PetSitter!"
 
 @app.post("/signup", status_code=201) 
-async def sign_user_up(reqBody: SignUpBody):  
+async def sign_user_up(reqBody: basemodels.SignUpBody):  
   user = await models.Appuser.create(email=reqBody.email)
   if user:
     return {"status":"ok"}
@@ -74,7 +23,7 @@ async def sign_user_up(reqBody: SignUpBody):
     raise HTTPException(status_code=500, detail=f'Failed to Add User')
 
 @app.post("/login", status_code=200) 
-async def log_user_in(reqBody: LogInBody):  
+async def log_user_in(reqBody: basemodels.LogInBody):  
   userArray = await models.Appuser.filter(email=reqBody.email)
   if userArray:
     return userArray[0]
@@ -86,14 +35,16 @@ async def get_detailed_user_info_by_id(id: int):
   return "Here is the appuser you asked for + owner and sitter data!"
 
 @app.post("/appuser-extended/{id}", status_code=200) 
-async def set_user_info(id: int, appuserReqBody: UpdateAppuserBody, sitterReqBody: SetSitterBody, ownerReqBody: SetOwnerBody):     
+async def set_user_info(id: int, appuserReqBody: basemodels.UpdateAppuserBody, sitterReqBody: basemodels.SetSitterBody, ownerReqBody: basemodels.SetOwnerBody):     
   #appuser = await
   return "Here is your updated appuser + owner and sitter data!"
 
-# need to address prefecture and city_ward match
+#expects to receive the prefecture and city_ward of the user conducting the search + any booleans that are true (meaning the user want to find a sitter meeting those conditions)
 @app.get("/appuser-sitters", status_code=200) 
-async def get_all_matching_sitters(sitter_house_ok: bool, owner_house_ok: bool, visit_ok: bool, dogs_ok: bool, cats_ok: bool, fish_ok: bool, birds_ok: bool, rabbits_ok: bool):     
+async def get_all_matching_sitters(prefecture: str, city_ward: str, sitter_house_ok: bool | None = None, owner_house_ok: bool | None  = None, visit_ok: bool | None  = None, dogs_ok: bool | None  = None, cats_ok: bool | None  = None, fish_ok: bool | None  = None, birds_ok: bool | None  = None, rabbits_ok: bool | None  = None):     
       matchingSitterArray = await models.Sitter.filter(
+        prefecture=prefecture,
+        city_ward=city_ward,
         sitter_house_ok=sitter_house_ok, 
         owner_house_ok=owner_house_ok, 
         visit_ok=visit_ok, 
@@ -134,7 +85,7 @@ async def get_inquiry_by_id(id: int):
     raise HTTPException(status_code=404, detail=f'Inquiry Not Found')
 
 @app.post("/inquiry", status_code=201) 
-async def create_inquiry(reqBody: CreateInquiryBody):   
+async def create_inquiry(reqBody: basemodels.CreateInquiryBody):   
   inquiry = await models.Inquiry.create(**reqBody.dict())  
   if inquiry:
     return inquiry
@@ -142,7 +93,7 @@ async def create_inquiry(reqBody: CreateInquiryBody):
     raise HTTPException(status_code=500, detail=f'Failed to Add Inquiry')
 
 @app.patch("/inquiry/{id}", status_code=200) 
-async def update_inquiry_status(id: int, reqBody: UpdateInquiryStatusBody):  
+async def update_inquiry_status(id: int, reqBody: basemodels.UpdateInquiryStatusBody):  
   inquiryArray = await models.Inquiry.filter(id=id) 
   if inquiryArray:
     inquiry = inquiryArray[0]

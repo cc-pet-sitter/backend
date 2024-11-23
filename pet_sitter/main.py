@@ -42,33 +42,29 @@ async def set_user_info(id: int, appuserReqBody: basemodels.UpdateAppuserBody, s
 #expects to receive the prefecture and city_ward of the user conducting the search + any booleans that are true (meaning the user want to find a sitter meeting those conditions)
 @app.get("/appuser-sitters", status_code=200) 
 async def get_all_matching_sitters(prefecture: str, city_ward: str, sitter_house_ok: bool | None = None, owner_house_ok: bool | None  = None, visit_ok: bool | None  = None, dogs_ok: bool | None  = None, cats_ok: bool | None  = None, fish_ok: bool | None  = None, birds_ok: bool | None  = None, rabbits_ok: bool | None  = None):     
-      payload = {}
+      sitter_search_conditions = {}
       if sitter_house_ok:
-        payload["sitter_house_ok"] = True
+        sitter_search_conditions["sitter_house_ok"] = True
       if owner_house_ok:
-        payload["owner_house_ok"] = True
+        sitter_search_conditions["owner_house_ok"] = True
       if visit_ok:
-        payload["visit_ok"] = True
+        sitter_search_conditions["visit_ok"] = True
       if dogs_ok:
-        payload["dogs_ok"] = True
+        sitter_search_conditions["dogs_ok"] = True
       if cats_ok:
-        payload["cats_ok"] = True
+        sitter_search_conditions["cats_ok"] = True
       if fish_ok:
-        payload["fish_ok"] = True
+        sitter_search_conditions["fish_ok"] = True
       if birds_ok:
-        payload["birds_ok"] = True
+        sitter_search_conditions["birds_ok"] = True
       if rabbits_ok:
-        payload["rabbits_ok"] = True
+        sitter_search_conditions["rabbits_ok"] = True
 
-      matchingSitterArray = await models.Sitter.filter(
-        # prefecture=prefecture,
-        # city_ward=city_ward,
-        **payload
-        ).select_related("appuser") ## Ex. Can use matchingSitterArray[0].appuser.email to get email from Appuser table for one user
+      matchingSitterArray = await models.Sitter.filter(**sitter_search_conditions).select_related("appuser").filter(appuser__prefecture=prefecture, appuser__city_ward=city_ward) ## Ex. Can use matchingSitterArray[0].appuser.email to get email from Appuser table for one user
       if matchingSitterArray:
         return matchingSitterArray
       else:
-        raise HTTPException(status_code=404, detail=f'No Sitters Found')
+        raise HTTPException(status_code=404, detail=f'No Matching Sitters Found')
 
 @app.get("/appuser/{id}/inquiry", status_code=200) 
 async def get_all_relevant_inquiries_for_user(id: int, user_type: str):

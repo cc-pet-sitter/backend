@@ -31,13 +31,11 @@ class SetSitterBody(BaseModel):
   fish_ok: bool | None = None
   birds_ok: bool | None = None
   rabbits_ok: bool | None = None
-  appuser_id: int
 
 class SetOwnerBody(BaseModel):
-  average_sitter_rating: float | None = None
+  average_owner_rating: float | None = None
   profile_bio: str | None = None
   bio_picture_src_list: str | None = None
-  appuser_id: int
 
 class CreateInquiryBody(BaseModel):
   owner_appuser_id: int

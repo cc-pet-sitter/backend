@@ -32,12 +32,53 @@ async def log_user_in(reqBody: basemodels.LogInBody):
 
 @app.get("/appuser-extended/{id}", status_code=200) 
 async def get_detailed_user_info_by_id(id: int):     
-  return "Here is the appuser you asked for + owner and sitter data!"
+  return "Here is the appuser you asked for + BOTH owner AND sitter data!"
 
 @app.post("/appuser-extended/{id}", status_code=200) 
-async def set_user_info(id: int, appuserReqBody: basemodels.UpdateAppuserBody, sitterReqBody: basemodels.SetSitterBody, ownerReqBody: basemodels.SetOwnerBody):     
-  #appuser = await
-  return "Here is your updated appuser + owner and sitter data!"
+async def set_user_info(id: int, user_type: str, appuserReqBody: basemodels.UpdateAppuserBody, sitterReqBody: basemodels.SetSitterBody | None = None, ownerReqBody: basemodels.SetOwnerBody | None = None):   
+  appuserArray = await models.Appuser.filter(id=id) 
+  
+  if appuserArray:
+    appuser = appuserArray[0]
+    response = {}
+
+    if user_type == "SITTER":
+      if sitterReqBody:
+        sitterArray = await models.Sitter.filter(appuser_id=id)
+
+        if sitterArray: #update the retrieved sitter record
+          sitter = sitterArray[0]
+          await sitter.update_from_dict(**sitterReqBody.dict())
+          await sitter.save()
+          latestSitter = await models.Sitter.get(appuser_id=id)
+          response["sitter"] = latestSitter
+        else: #create a new sitter record
+          latestSitter = await models.Sitter.create(appuser_id=id, **sitterReqBody.dict())  
+          response["sitter"] = latestSitter
+    elif  user_type == "OWNER":
+      if ownerReqBody:
+        ownerArray = await models.Owner.filter(appuser_id=id)
+
+        if ownerArray: #update the retrieved owner record
+          owner = ownerArray[0]
+          await owner.update_from_dict(**ownerReqBody.dict())
+          await owner.save()
+          latestOwner = await models.Owner.get(appuser_id=id)
+          response["owner"] = latestOwner
+      else: #create a new owner record
+          latestOwner = await models.Owner.create(appuser_id=id, **ownerReqBody.dict())  
+          response["owner"] = latestOwner
+    else:
+      raise HTTPException(status_code=400, detail=f'No Valid User Type Received')
+    
+    #update the appuser record
+    await appuser.update_from_dict(**appuserReqBody.dict())
+    await appuser.save()
+    latestAppuser = await models.Appuser.get(id=id)
+    response["appuser"] = latestAppuser
+    return response
+  else:
+    raise HTTPException(status_code=404, detail=f'User Does Not Exist')
 
 #expects to receive the prefecture and city_ward of the user conducting the search + any booleans that are true (meaning the user want to find a sitter meeting those conditions)
 @app.get("/appuser-sitters", status_code=200) 
@@ -81,7 +122,7 @@ async def get_all_relevant_inquiries_for_user(id: int, user_type: str):
       else:
         raise HTTPException(status_code=404, detail=f'No Owner Inquiries Found')
   else:
-    raise HTTPException(status_code=400, detail=f'No User Type Received')
+    raise HTTPException(status_code=400, detail=f'No Valid User Type Received')
 
 @app.get("/inquiry/{id}", status_code=200) 
 async def get_inquiry_by_id(id: int):     

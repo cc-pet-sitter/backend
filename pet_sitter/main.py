@@ -1,72 +1,21 @@
 #start server from root (backend) folder with "poetry run start"
-from fastapi import FastAPI, HTTPException
-import uvicorn 
-from tortoise import Tortoise 
-from pydantic import BaseModel 
-from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException # type: ignore
+import uvicorn # type: ignore
+from tortoise import Tortoise # type: ignore
+from dotenv import load_dotenv # type: ignore
 import os
 import pet_sitter.models as models
-from datetime import datetime
+import pet_sitter.basemodels as basemodels
 
 load_dotenv()
 app = FastAPI()   
-
-class SignUpBody(BaseModel):
-  email: str
-
-class LogInBody(BaseModel):
-  email: str
-
-class UpdateAppuserBody(BaseModel):
-  firstname: str | None
-  lastname: str | None
-  email: str | None
-  profile_picture_src: str | None
-  prefecture: str | None
-  city_ward: str | None
-  street_address: str | None
-  postal_code: str | None
-  account_language: str | None
-  english_ok: bool | None
-  japanese_ok: bool | None
-
-class SetSitterBody(BaseModel):
-  average_sitter_rating: float | None
-  profile_bio: str | None
-  bio_picture_src_list: str | None
-  sitter_house_ok: bool | None
-  owner_house_ok: bool | None
-  dogs_ok: bool | None
-  cats_ok: bool | None
-  fish_ok: bool | None
-  birds_ok: bool | None
-  rabbits_ok: bool | None
-  appuser_id: int
-
-class SetOwnerBody(BaseModel):
-  average_sitter_rating: float | None
-  profile_bio: str | None
-  bio_picture_src_list: str | None
-  appuser_id: int
-
-class CreateInquiryBody(BaseModel):
-  owner_appuser_id: int
-  sitter_appuser_id: int
-  start_date: datetime
-  end_date: datetime
-  desired_service: str
-  pet_id_list: str
-  additional_info: str | None
-
-class UpdateInquiryStatusBody(BaseModel):
-  inquiry_status: str
 
 @app.get("/") 
 async def main_route():     
   return "Welcome to PetSitter!"
 
 @app.post("/signup", status_code=201) 
-async def sign_user_up(reqBody: SignUpBody):  
+async def sign_user_up(reqBody: basemodels.SignUpBody):  
   user = await models.Appuser.create(email=reqBody.email)
   if user:
     return {"status":"ok"}
@@ -74,7 +23,7 @@ async def sign_user_up(reqBody: SignUpBody):
     raise HTTPException(status_code=500, detail=f'Failed to Add User')
 
 @app.post("/login", status_code=200) 
-async def log_user_in(reqBody: LogInBody):  
+async def log_user_in(reqBody: basemodels.LogInBody):  
   userArray = await models.Appuser.filter(email=reqBody.email)
   if userArray:
     return userArray[0]
@@ -83,30 +32,100 @@ async def log_user_in(reqBody: LogInBody):
 
 @app.get("/appuser-extended/{id}", status_code=200) 
 async def get_detailed_user_info_by_id(id: int):     
-  return "Here is the appuser you asked for + owner and sitter data!"
+  appuserArray = await models.Appuser.filter(id=id) 
+  
+  if appuserArray:
+    appuser = appuserArray[0]
+
+    response = {}
+    response["appuser"] = appuser
+
+    sitterArray = await models.Sitter.filter(appuser_id=id)
+    if sitterArray: #add the sitter record to the response
+      sitter = sitterArray[0]
+      response["sitter"] = sitter
+
+    ownerArray = await models.Owner.filter(appuser_id=id)
+    if ownerArray: #add the owner record to the response
+      owner = ownerArray[0]
+      response["owner"] = owner
+
+    return response
+  else:
+    raise HTTPException(status_code=404, detail=f'User Not Found')
 
 @app.post("/appuser-extended/{id}", status_code=200) 
-async def set_user_info(id: int, appuserReqBody: UpdateAppuserBody, sitterReqBody: SetSitterBody, ownerReqBody: SetOwnerBody):     
-  #appuser = await
-  return "Here is your updated appuser + owner and sitter data!"
+async def set_user_info(id: int, user_type: str, appuserReqBody: basemodels.UpdateAppuserBody, sitterReqBody: basemodels.SetSitterBody | None = None, ownerReqBody: basemodels.SetOwnerBody | None = None):   
+  appuserArray = await models.Appuser.filter(id=id) 
+  
+  if appuserArray:
+    appuser = appuserArray[0]
+    response = {}
 
-# need to address prefecture and city_ward match
+    if user_type == "SITTER":
+      if sitterReqBody:
+        sitterArray = await models.Sitter.filter(appuser_id=id)
+
+        if sitterArray: #update the retrieved sitter record
+          sitter = sitterArray[0]
+          await sitter.update_from_dict(sitterReqBody.dict(exclude_unset=True))
+          await sitter.save()
+          latestSitter = await models.Sitter.get(appuser_id=id)
+          response["sitter"] = latestSitter
+        else: #create a new sitter record
+          latestSitter = await models.Sitter.create(appuser_id=id, **sitterReqBody.dict())  
+          response["sitter"] = latestSitter
+    elif  user_type == "OWNER":
+      if ownerReqBody:
+        ownerArray = await models.Owner.filter(appuser_id=id)
+
+        if ownerArray: #update the retrieved owner record
+          owner = ownerArray[0]
+          await owner.update_from_dict(ownerReqBody.dict(exclude_unset=True))
+          await owner.save()
+          latestOwner = await models.Owner.get(appuser_id=id)
+          response["owner"] = latestOwner
+        else: #create a new owner record
+            latestOwner = await models.Owner.create(appuser_id=id, **ownerReqBody.dict())  
+            response["owner"] = latestOwner
+    else:
+      raise HTTPException(status_code=400, detail=f'No Valid User Type Received')
+    
+    #update the appuser record
+    await appuser.update_from_dict(appuserReqBody.dict(exclude_unset=True))
+    await appuser.save()
+    latestAppuser = await models.Appuser.get(id=id)
+    response["appuser"] = latestAppuser
+    return response
+  else:
+    raise HTTPException(status_code=404, detail=f'User Does Not Exist')
+
+#expects to receive the prefecture and city_ward of the user conducting the search + any booleans that are true (meaning the user want to find a sitter meeting those conditions)
 @app.get("/appuser-sitters", status_code=200) 
-async def get_all_matching_sitters(sitter_house_ok: bool, owner_house_ok: bool, visit_ok: bool, dogs_ok: bool, cats_ok: bool, fish_ok: bool, birds_ok: bool, rabbits_ok: bool):     
-      matchingSitterArray = await models.Sitter.filter(
-        sitter_house_ok=sitter_house_ok, 
-        owner_house_ok=owner_house_ok, 
-        visit_ok=visit_ok, 
-        dogs_ok=dogs_ok, 
-        cats_ok=cats_ok, 
-        fish_ok=fish_ok, 
-        birds_ok=birds_ok, 
-        rabbits_ok=rabbits_ok
-        ).select_related("appuser") ## Ex. Can use matchingSitterArray[0].appuser.email to get email from Appuser table for one user
+async def get_all_matching_sitters(prefecture: str, city_ward: str, sitter_house_ok: bool | None = None, owner_house_ok: bool | None  = None, visit_ok: bool | None  = None, dogs_ok: bool | None  = None, cats_ok: bool | None  = None, fish_ok: bool | None  = None, birds_ok: bool | None  = None, rabbits_ok: bool | None  = None):     
+      sitter_search_conditions = {}
+      if sitter_house_ok:
+        sitter_search_conditions["sitter_house_ok"] = True
+      if owner_house_ok:
+        sitter_search_conditions["owner_house_ok"] = True
+      if visit_ok:
+        sitter_search_conditions["visit_ok"] = True
+      if dogs_ok:
+        sitter_search_conditions["dogs_ok"] = True
+      if cats_ok:
+        sitter_search_conditions["cats_ok"] = True
+      if fish_ok:
+        sitter_search_conditions["fish_ok"] = True
+      if birds_ok:
+        sitter_search_conditions["birds_ok"] = True
+      if rabbits_ok:
+        sitter_search_conditions["rabbits_ok"] = True
+
+      matchingSitterArray = await models.Sitter.filter(**sitter_search_conditions).select_related("appuser").filter(appuser__prefecture=prefecture, appuser__city_ward=city_ward) ## Ex. Can use matchingSitterArray[0].appuser.email to get email from Appuser table for one user
       if matchingSitterArray:
         return matchingSitterArray
       else:
-        raise HTTPException(status_code=404, detail=f'No Sitters Found')
+        raise HTTPException(status_code=404, detail=f'No Matching Sitters Found')
 
 @app.get("/appuser/{id}/inquiry", status_code=200) 
 async def get_all_relevant_inquiries_for_user(id: int, user_type: str):
@@ -123,7 +142,7 @@ async def get_all_relevant_inquiries_for_user(id: int, user_type: str):
       else:
         raise HTTPException(status_code=404, detail=f'No Owner Inquiries Found')
   else:
-    raise HTTPException(status_code=400, detail=f'No User Type Received')
+    raise HTTPException(status_code=400, detail=f'No Valid User Type Received')
 
 @app.get("/inquiry/{id}", status_code=200) 
 async def get_inquiry_by_id(id: int):     
@@ -134,7 +153,7 @@ async def get_inquiry_by_id(id: int):
     raise HTTPException(status_code=404, detail=f'Inquiry Not Found')
 
 @app.post("/inquiry", status_code=201) 
-async def create_inquiry(reqBody: CreateInquiryBody):   
+async def create_inquiry(reqBody: basemodels.CreateInquiryBody):   
   inquiry = await models.Inquiry.create(**reqBody.dict())  
   if inquiry:
     return inquiry
@@ -142,7 +161,7 @@ async def create_inquiry(reqBody: CreateInquiryBody):
     raise HTTPException(status_code=500, detail=f'Failed to Add Inquiry')
 
 @app.patch("/inquiry/{id}", status_code=200) 
-async def update_inquiry_status(id: int, reqBody: UpdateInquiryStatusBody):  
+async def update_inquiry_status(id: int, reqBody: basemodels.UpdateInquiryStatusBody):  
   inquiryArray = await models.Inquiry.filter(id=id) 
   if inquiryArray:
     inquiry = inquiryArray[0]

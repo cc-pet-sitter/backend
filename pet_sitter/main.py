@@ -1,34 +1,229 @@
 #start server from root (backend) folder with "poetry run start"
-from fastapi import FastAPI, HTTPException # type: ignore
+from fastapi import FastAPI, HTTPException, status, Request, Depends
 import uvicorn # type: ignore
 from tortoise import Tortoise # type: ignore
 from dotenv import load_dotenv # type: ignore
 import os
 import pet_sitter.models as models
 import pet_sitter.basemodels as basemodels
+import firebase_admin
+from firebase_admin import credentials, auth
+from fastapi.middleware.cors import CORSMiddleware
+from typing import List
+from datetime import datetime
+
+TORTOISE_ORM = {
+    "connections": {
+        "default": os.getenv("DATABASE_URL")  
+    },
+    "apps": {
+        "models": {
+            "models": ["pet_sitter.models", "pet_sitter.basemodels"], 
+            "default_connection": "default",
+        },
+    },
+}
 
 load_dotenv()
-app = FastAPI()   
+
+# Initialize Firebase Admin SDK
+cred = credentials.Certificate(os.getenv("FIREBASE_CREDENTIALS_PATH"))
+firebase_admin.initialize_app(cred)
+
+app = FastAPI()
+
+# Enable CORS for frontend interaction
+origins = [
+  os.getenv("FRONTEND_BASE_URL"),
+  "http://localhost:5173",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Dependency for Firebase authentication
+async def verify_firebase_token(request: Request):
+    auth_header = request.headers.get("Authorization")
+    if not auth_header:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authorization header missing.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    try:
+        token_type, id_token = auth_header.split()
+        if token_type.lower() != "bearer":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid authentication scheme.",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        decoded_token = auth.verify_id_token(id_token)
+        return decoded_token
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authorization header format.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except auth.InvalidIdTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid ID token.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication error.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+# Helper function to assign roles to Firebase Custom Claims
+def set_custom_claims(uid: str, roles: List[str]):
+    try:
+        claims = {role: True for role in roles}
+        auth.set_custom_user_claims(uid, claims)
+    except auth.AuthError as e:
+        # Log the error details for debugging
+        print(f"AuthError when setting custom claims: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to set custom claims.",
+        )
+    except Exception as e:
+        # Log any other exceptions
+        print(f"Unexpected error when setting custom claims: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to set custom claims.",
+        )
 
 @app.get("/") 
 async def main_route():     
   return "Welcome to PetSitter!"
 
+from pet_sitter.basemodels import SignUpBody
+
 @app.post("/signup", status_code=201) 
-async def sign_user_up(reqBody: basemodels.SignUpBody):  
-  user = await models.Appuser.create(email=reqBody.email)
-  if user:
-    return {"status":"ok"}
-  else:
-    raise HTTPException(status_code=500, detail=f'Failed to Add User')
+async def sign_user_up(reqBody: SignUpBody, decoded_token: dict = Depends(verify_firebase_token)):  
+    # Verify that the email in the token matches the signup email
+    if decoded_token.get('email') != reqBody.email:
+        raise HTTPException(status_code=403, detail="Email mismatch.")
+
+    # Check if user already exists in the database
+    existing_user = await models.Appuser.filter(email=reqBody.email).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="User already exists in the database.")
+
+    # Create user in the database with firebase_uid
+    appuser = await models.Appuser.create(
+        email=reqBody.email,
+        firebase_uid=decoded_token['uid']
+    )
+    if appuser:
+        roles_assigned = []
+        if reqBody.role in {"owner", "both"}:
+            # Create Owner profile
+            owner = await models.Owner.create(
+                appuser=appuser
+            )
+            roles_assigned.append("owner")
+        if reqBody.role in {"sitter", "both"}:
+            # Create Sitter profile
+            sitter = await models.Sitter.create(
+                appuser=appuser
+            )
+            roles_assigned.append("sitter")
+        
+        # Assign roles in Firebase if any
+        if roles_assigned:
+            set_custom_claims(decoded_token['uid'], roles_assigned)
+        
+        return {"status":"ok", "user_id": appuser.id}
+    else:
+        raise HTTPException(status_code=500, detail='Failed to Add User')
+
+from pet_sitter.basemodels import LogInBody  # Ensure correct import
 
 @app.post("/login", status_code=200) 
-async def log_user_in(reqBody: basemodels.LogInBody):  
-  userArray = await models.Appuser.filter(email=reqBody.email)
-  if userArray:
-    return userArray[0]
-  else:
-    raise HTTPException(status_code=404, detail=f'User Not Found')
+async def log_user_in(decoded_token: dict = Depends(verify_firebase_token)):  
+    # Extract email and uid from the decoded token
+    email = decoded_token.get('email')
+    uid = decoded_token.get('uid')
+    
+    if not email or not uid:
+        raise HTTPException(status_code=400, detail="Invalid token data.")
+    
+    # Fetch user from the database
+    user = await models.Appuser.filter(email=email, firebase_uid=uid).first()
+    if user:
+        # Update last login timestamp
+        user.last_login = datetime.now()
+        await user.save()
+    
+        # Determine roles based on profiles
+        roles = []
+        if await user.owner_profile:
+            roles.append("owner")
+        if await user.sitter_profile:
+            roles.append("sitter")
+    
+        # Fetch other user data as needed
+        return {
+            "status": "ok",
+            "user_id": user.id,
+            "email": user.email,
+            "firstname": user.firstname,
+            "lastname": user.lastname,
+            "roles": roles,
+            "profile_picture_src": user.profile_picture_src,
+            # Add other fields as necessary
+        }
+    else:
+        raise HTTPException(status_code=404, detail='User Not Found')
+
+@app.post("/assign-roles", status_code=200)
+async def assign_roles(id: int, reqBody: basemodels.RoleAssignBody, decoded_token: dict = Depends(verify_firebase_token)):
+    try:
+        # Authorization: Only the user themselves or admin users can assign roles
+        if decoded_token['uid'] != models.Appuser.get(id=id).firebase_uid and not decoded_token.get('admin', False):
+            raise HTTPException(status_code=403, detail="Not authorized to assign roles.")
+        
+        # Validate roles
+        valid_roles = {"owner", "sitter"}
+        for role in reqBody.roles:
+            if role not in valid_roles:
+                raise HTTPException(status_code=400, detail=f"Invalid role: {role}")
+        
+        # Fetch Appuser
+        appuser = await models.Appuser.get_or_none(id=id)
+        if not appuser:
+            raise HTTPException(status_code=404, detail="User Not Found.")
+        
+        # Assign roles based on the request
+        roles_assigned = []
+        if "owner" in reqBody.roles and not await appuser.owner_profile:
+            await models.Owner.create(appuser=appuser)
+            roles_assigned.append("owner")
+        if "sitter" in reqBody.roles and not await appuser.sitter_profile:
+            await models.Sitter.create(appuser=appuser)
+            roles_assigned.append("sitter")
+        
+        # Update Firebase Custom Claims
+        if roles_assigned:
+            set_custom_claims(decoded_token['uid'], roles_assigned)
+        
+        return {"message": "Roles assigned successfully."}
+    except models.Appuser.DoesNotExist:
+        raise HTTPException(status_code=404, detail="User Not Found.")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/appuser-extended/{id}", status_code=200) 
 async def get_detailed_user_info_by_id(id: int):     

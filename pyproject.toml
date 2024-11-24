@@ -20,6 +20,11 @@ python-dotenv = "^1.0.1"
 pydantic = "^2.10.0"
 
 
+
+[tool.aerich]
+tortoise_orm = "pet_sitter.main.TORTOISE_ORM"
+location = "./migrations"
+src_folder = "./."
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

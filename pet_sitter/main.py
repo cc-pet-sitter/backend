@@ -48,7 +48,7 @@ async def set_user_info(id: int, user_type: str, appuserReqBody: basemodels.Upda
 
         if sitterArray: #update the retrieved sitter record
           sitter = sitterArray[0]
-          await sitter.update_from_dict(**sitterReqBody.dict())
+          await sitter.update_from_dict(sitterReqBody.dict(exclude_unset=True))
           await sitter.save()
           latestSitter = await models.Sitter.get(appuser_id=id)
           response["sitter"] = latestSitter
@@ -61,18 +61,18 @@ async def set_user_info(id: int, user_type: str, appuserReqBody: basemodels.Upda
 
         if ownerArray: #update the retrieved owner record
           owner = ownerArray[0]
-          await owner.update_from_dict(**ownerReqBody.dict())
+          await owner.update_from_dict(ownerReqBody.dict(exclude_unset=True))
           await owner.save()
           latestOwner = await models.Owner.get(appuser_id=id)
           response["owner"] = latestOwner
-      else: #create a new owner record
-          latestOwner = await models.Owner.create(appuser_id=id, **ownerReqBody.dict())  
-          response["owner"] = latestOwner
+        else: #create a new owner record
+            latestOwner = await models.Owner.create(appuser_id=id, **ownerReqBody.dict())  
+            response["owner"] = latestOwner
     else:
       raise HTTPException(status_code=400, detail=f'No Valid User Type Received')
     
     #update the appuser record
-    await appuser.update_from_dict(**appuserReqBody.dict())
+    await appuser.update_from_dict(appuserReqBody.dict(exclude_unset=True))
     await appuser.save()
     latestAppuser = await models.Appuser.get(id=id)
     response["appuser"] = latestAppuser

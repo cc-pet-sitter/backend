@@ -26,6 +26,7 @@ class SetSitterBody(BaseModel):
   bio_picture_src_list: str | None = None
   sitter_house_ok: bool | None = None
   owner_house_ok: bool | None = None
+  visit_ok: bool | None = None
   dogs_ok: bool | None = None
   cats_ok: bool | None = None
   fish_ok: bool | None = None

@@ -32,7 +32,27 @@ async def log_user_in(reqBody: basemodels.LogInBody):
 
 @app.get("/appuser-extended/{id}", status_code=200) 
 async def get_detailed_user_info_by_id(id: int):     
-  return "Here is the appuser you asked for + BOTH owner AND sitter data!"
+  appuserArray = await models.Appuser.filter(id=id) 
+  
+  if appuserArray:
+    appuser = appuserArray[0]
+
+    response = {}
+    response["appuser"] = appuser
+
+    sitterArray = await models.Sitter.filter(appuser_id=id)
+    if sitterArray: #add the sitter record to the response
+      sitter = sitterArray[0]
+      response["sitter"] = sitter
+
+    ownerArray = await models.Owner.filter(appuser_id=id)
+    if ownerArray: #add the owner record to the response
+      owner = ownerArray[0]
+      response["owner"] = owner
+
+    return response
+  else:
+    raise HTTPException(status_code=404, detail=f'User Not Found')
 
 @app.post("/appuser-extended/{id}", status_code=200) 
 async def set_user_info(id: int, user_type: str, appuserReqBody: basemodels.UpdateAppuserBody, sitterReqBody: basemodels.SetSitterBody | None = None, ownerReqBody: basemodels.SetOwnerBody | None = None):   

@@ -1,54 +1,161 @@
 #start server from root (backend) folder with "poetry run start"
-from fastapi import FastAPI, HTTPException # type: ignore
+from fastapi import FastAPI, HTTPException, Request, status, Depends # type: ignore
 import uvicorn # type: ignore
 from tortoise import Tortoise # type: ignore
 from dotenv import load_dotenv # type: ignore
 import os
 import pet_sitter.models as models
 import pet_sitter.basemodels as basemodels
+import firebase_admin
+from firebase_admin import credentials, auth
+from fastapi.middleware.cors import CORSMiddleware
+from datetime import datetime
 
 load_dotenv()
-app = FastAPI()   
+
+# Initialize Firebase Admin SDK
+cred = credentials.Certificate(os.getenv("FIREBASE_CREDENTIALS_PATH"))
+firebase_admin.initialize_app(cred)
+
+app = FastAPI()
+
+# Enable CORS for frontend interaction
+origins = [
+  os.getenv("FRONTEND_BASE_URL"),
+  "http://localhost:5173",
+]
+
+app.add_middleware(
+  CORSMiddleware,
+  allow_origins=origins,
+  allow_credentials=True,
+  allow_methods=["*"],
+  allow_headers=["*"],
+)
+
+# Dependency for Firebase authentication
+async def verify_firebase_token(request: Request):
+  auth_header = request.headers.get("Authorization")
+  if not auth_header:
+      raise HTTPException(
+          status_code=status.HTTP_401_UNAUTHORIZED,
+          detail="Authorization header missing.",
+          headers={"WWW-Authenticate": "Bearer"},
+      )
+  try:
+      token_type, id_token = auth_header.split()
+      if token_type.lower() != "bearer":
+          raise HTTPException(
+              status_code=status.HTTP_401_UNAUTHORIZED,
+              detail="Invalid authentication scheme.",
+              headers={"WWW-Authenticate": "Bearer"},
+          )
+      decoded_token = auth.verify_id_token(id_token)
+      return decoded_token
+  except ValueError:
+      raise HTTPException(
+          status_code=status.HTTP_401_UNAUTHORIZED,
+          detail="Invalid authorization header format.",
+          headers={"WWW-Authenticate": "Bearer"},
+      )
+  except auth.InvalidIdTokenError:
+      raise HTTPException(
+          status_code=status.HTTP_401_UNAUTHORIZED,
+          detail="Invalid ID token.",
+          headers={"WWW-Authenticate": "Bearer"},
+      )
+  except Exception as e:
+      raise HTTPException(
+          status_code=status.HTTP_401_UNAUTHORIZED,
+          detail="Authentication error.",
+          headers={"WWW-Authenticate": "Bearer"},
+      )
 
 @app.get("/") 
 async def main_route():     
   return "Welcome to PetSitter!"
 
 @app.post("/signup", status_code=201) 
-async def sign_user_up(reqBody: basemodels.SignUpBody):  
-  user = await models.Appuser.create(**reqBody.dict())
-  if user:
-    return {"status":"ok"}
+async def sign_user_up(reqBody: basemodels.SignUpBody, decoded_token: dict = Depends(verify_firebase_token)):  
+  # Verify that the email in the token matches the signup email
+  if decoded_token.get('email') != reqBody.email:
+      raise HTTPException(status_code=403, detail="Email mismatch.")
+  
+  # Check if user already exists in the database
+  existing_user = await models.Appuser.filter(email=reqBody.email).first()
+  if existing_user:
+      raise HTTPException(status_code=400, detail="User already exists in the database.")
+
+  # Create user in the database with firebase_user_id and more data
+  appuser = await models.Appuser.create(
+      **reqBody.dict(),
+      firebase_user_id=decoded_token['uid']
+  )
+      
+  if appuser:      
+      return {"status":"ok", "user_id": appuser.id}
   else:
-    raise HTTPException(status_code=500, detail=f'Failed to Add User')
+      raise HTTPException(status_code=500, detail='Failed to Add User')
 
 @app.post("/login", status_code=200) 
-async def log_user_in(reqBody: basemodels.LogInBody):  
-  userArray = await models.Appuser.filter(email=reqBody.email)
-  if userArray:
-    return userArray[0]
-  else:
-    raise HTTPException(status_code=404, detail=f'User Not Found')
+async def log_user_in(decoded_token: dict = Depends(verify_firebase_token)):  
+    # Extract email and uid from the decoded token
+    email = decoded_token.get('email')
+    uid = decoded_token.get('uid')
+    
+    if not email or not uid:
+        raise HTTPException(status_code=400, detail="Invalid token data.")
+    
+    # Fetch user from the database
+    user = await models.Appuser.filter(email=email, firebase_user_id=uid).first()
+    if user:
+        # Update last login timestamp
+        user.last_login = datetime.now()
+        await user.save()
+    
+        # Fetch other user data as needed
+        return {
+            "status": "ok",
+            "user_id": user.id,
+            "email": user.email,
+            "firstname": user.firstname,
+            "lastname": user.lastname,
+            "is_sitter": user.is_sitter,
+            "profile_picture_src": user.profile_picture_src,
+            # Add other fields as necessary
+        }
+    else:
+        raise HTTPException(status_code=404, detail='User Not Found')
   
 @app.get("/appuser/{id}", status_code=200) 
-async def get_appuser_by_id(id: int):   
-  appuserArray = await models.Appuser.filter(id=id) 
+async def get_appuser_by_id(id: int, decoded_token: dict = Depends(verify_firebase_token)):   
+  appuser = await models.Appuser.filter(id=id).first() 
   
-  if appuserArray:
-    return appuserArray[0] 
+  # Authorization: Only the user themselves can access the profile 
+  if decoded_token['uid'] != appuser.firebase_user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to view this user.")
+
+  if appuser:
+    return appuser 
   else:
     raise HTTPException(status_code=404, detail=f'Appuser Not Found')
+
   
 @app.put("/appuser/{id}", status_code=200) 
-async def update_appuser_info(id: int, appuserReqBody: basemodels.UpdateAppuserBody):  
+async def update_appuser_info(id: int, appuserReqBody: basemodels.UpdateAppuserBody, decoded_token: dict = Depends(verify_firebase_token)):  
   appuserArray = await models.Appuser.filter(id=id) 
   
-  if appuserArray:
-    appuser = appuserArray[0]
-    await appuser.update_from_dict(appuserReqBody.dict(exclude_unset=True))
-    await appuser.save()
-    latestAppuser = await models.Appuser.get(id=id)
-    return latestAppuser
+  appuser = appuserArray[0]
+  if not appuser:
+        raise HTTPException(status_code=404, detail='Appuser Not Found')
+  
+  if decoded_token['uid'] != appuser.firebase_user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to update this user.")
+
+  await appuser.update_from_dict(appuserReqBody.dict(exclude_unset=True))
+  await appuser.save()
+  latestAppuser = await models.Appuser.get(id=id)
+  return latestAppuser
   
 @app.get("/sitter/{appuser_id}", status_code=200) 
 async def get_sitter_by_appuser_id(appuser_id: int):   

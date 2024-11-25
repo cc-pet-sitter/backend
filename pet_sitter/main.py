@@ -16,7 +16,7 @@ async def main_route():
 
 @app.post("/signup", status_code=201) 
 async def sign_user_up(reqBody: basemodels.SignUpBody):  
-  user = await models.Appuser.create(email=reqBody.email)
+  user = await models.Appuser.create(**reqBody.dict())
   if user:
     return {"status":"ok"}
   else:
@@ -29,6 +29,49 @@ async def log_user_in(reqBody: basemodels.LogInBody):
     return userArray[0]
   else:
     raise HTTPException(status_code=404, detail=f'User Not Found')
+  
+@app.get("/appuser/{id}", status_code=200) 
+async def get_appuser_by_id(id: int):   
+  appuserArray = await models.Appuser.filter(id=id) 
+  
+  if appuserArray:
+    return appuserArray[0] 
+  else:
+    raise HTTPException(status_code=404, detail=f'Appuser Not Found')
+  
+@app.put("/appuser/{id}", status_code=200) 
+async def update_appuser_info(id: int, appuserReqBody: basemodels.UpdateAppuserBody):  
+  appuserArray = await models.Appuser.filter(id=id) 
+  
+  if appuserArray:
+    appuser = appuserArray[0]
+    await appuser.update_from_dict(appuserReqBody.dict(exclude_unset=True))
+    await appuser.save()
+    latestAppuser = await models.Appuser.get(id=id)
+    return latestAppuser
+  
+@app.get("/sitter/{appuser_id}", status_code=200) 
+async def get_sitter_by_appuser_id(appuser_id: int):   
+  sitterArray = await models.Sitter.filter(appuser_id=appuser_id) 
+  
+  if sitterArray:
+    return sitterArray[0] 
+  else:
+    raise HTTPException(status_code=404, detail=f'Sitter Not Found')
+
+@app.post("/sitter/{appuser_id}", status_code=200) 
+async def set_user_info(appuser_id: int, sitterReqBody: basemodels.SetSitterBody):  
+  sitterArray = await models.Sitter.filter(appuser_id=appuser_id)
+
+  if sitterArray:
+    sitter = sitterArray[0]
+    await sitter.update_from_dict(sitterReqBody.dict(exclude_unset=True))
+    await sitter.save()
+    latestSitter = await models.Sitter.get(appuser_id=appuser_id)
+    return latestSitter
+  else:
+    latestSitter = await models.Sitter.create(appuser_id=appuser_id, **sitterReqBody.dict())  
+    return latestSitter
 
 @app.get("/appuser-extended/{id}", status_code=200) 
 async def get_detailed_user_info_by_id(id: int):     

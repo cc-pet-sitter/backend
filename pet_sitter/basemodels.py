@@ -3,6 +3,9 @@ from datetime import datetime
 
 class SignUpBody(BaseModel):
   email: str
+  firstname: str
+  lastname: str
+  firebase_user_id: str
 
 class LogInBody(BaseModel):
   email: str

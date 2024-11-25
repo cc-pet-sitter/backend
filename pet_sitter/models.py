@@ -28,9 +28,13 @@ class AccountLanguage(Enum):
 
 class Appuser(models.Model):
   id = fields.IntField(primary_key=True)
-  firstname = fields.CharField(null=True, max_length=40)
-  lastname = fields.CharField(null=True, max_length=40)
+  firstname = fields.CharField(max_length=40)
+  lastname = fields.CharField(max_length=40)
   email = fields.CharField(unique=True, max_length=40)
+  firebase_user_id = fields.CharField(unique=True, max_length=200)
+  average_user_rating = fields.FloatField(null=True)
+  user_profile_bio = fields.TextField(null=True)
+  user_bio_picture_src_list = fields.TextField(null=True)
   account_created = fields.DatetimeField(null=True, auto_now_add=True)
   last_updated = fields.DatetimeField(null=True, auto_now=True)
   last_login = fields.DatetimeField(null=True)
@@ -42,19 +46,12 @@ class Appuser(models.Model):
   account_language = fields.CharEnumField(AccountLanguage, default=AccountLanguage.ENGLISH, null=True)
   english_ok = fields.BooleanField(default=False, null=True)
   japanese_ok = fields.BooleanField(default=False, null=True)
-
-class Owner(models.Model):
-  id = fields.IntField(primary_key=True)
-  average_owner_rating = fields.FloatField(null=True)
-  profile_bio = fields.TextField(null=True)
-  bio_picture_src_list = fields.TextField(null=True)
-  appuser = fields.ForeignKeyField("models.Appuser", related_name="owners", unique=True)
+  is_sitter = fields.BooleanField(default=False, null=True)
 
 class Sitter(models.Model):
   id = fields.IntField(primary_key=True)
-  average_sitter_rating = fields.FloatField(null=True)
-  profile_bio = fields.TextField(null=True)
-  bio_picture_src_list = fields.TextField(null=True)
+  sitter_profile_bio = fields.TextField()
+  sitter_bio_picture_src_list = fields.TextField(null=True)
   sitter_house_ok = fields.BooleanField(default=False, null=True)
   owner_house_ok = fields.BooleanField(default=False, null=True)
   visit_ok = fields.BooleanField(default=False, null=True)
@@ -76,15 +73,14 @@ class Pet(models.Model):
   medications = fields.CharField(null=True, max_length=80)
   special_needs = fields.TextField(null=True)
   profile_picture_src = fields.CharField(null=True, max_length=120)
-  owner = fields.ForeignKeyField("models.Owner", related_name="pets")
+  appuser = fields.ForeignKeyField("models.Appuser", related_name="pets")
   posted_date = fields.DatetimeField(auto_now_add=True, null=True)
   last_updated = fields.DatetimeField(auto_now=True, null=True)
   profile_bio = fields.TextField(null=True)
 
 class Availability(models.Model):
   id = fields.IntField(primary_key=True)
-  appuser_id = fields.IntField()
-  appuser_type = fields.CharEnumField(UserType)
+  sitter = fields.ForeignKeyField("models.Sitter", related_name="availability")
   start_date = fields.DateField()
   end_date = fields.DateField()
 

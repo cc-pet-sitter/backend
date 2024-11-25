@@ -153,6 +153,12 @@ async def get_all_matching_sitters(prefecture: str, city_ward: str, sitter_house
       if rabbits_ok:
         sitter_search_conditions["rabbits_ok"] = True
 
+      # appuser_search_conditions = {}
+      # if prefecture:
+      #   appuser_search_conditions["prefecture"] = True
+      # if city_ward:
+      #   appuser_search_conditions["city_ward"] = True
+
       matchingSitterArray = await models.Sitter.filter(**sitter_search_conditions).select_related("appuser").filter(appuser__prefecture=prefecture, appuser__city_ward=city_ward) ## Ex. Can use matchingSitterArray[0].appuser.email to get email from Appuser table for one user
       if matchingSitterArray:
         return matchingSitterArray

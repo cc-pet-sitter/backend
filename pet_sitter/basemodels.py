@@ -6,6 +6,10 @@ class SignUpBody(BaseModel):
   firstname: str
   lastname: str
   firebase_user_id: str
+  prefecture: str | None = None
+  city_ward: str | None = None
+  street_address: str | None = None
+  postal_code: str | None = None
 
 class LogInBody(BaseModel):
   email: str

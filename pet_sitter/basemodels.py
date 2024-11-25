@@ -5,7 +5,7 @@ class SignUpBody(BaseModel):
   email: str
   firstname: str
   lastname: str
-  firebase_user_id: str
+  # firebase_user_id: str No need since the firebase user id comes from the token
   prefecture: str | None = None
   city_ward: str | None = None
   street_address: str | None = None

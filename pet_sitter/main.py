@@ -63,15 +63,24 @@ async def get_sitter_by_appuser_id(appuser_id: int):
 async def set_user_info(appuser_id: int, sitterReqBody: basemodels.SetSitterBody):  
   sitterArray = await models.Sitter.filter(appuser_id=appuser_id)
 
-  if sitterArray:
+  if sitterArray: # the sitter already exists, so update it
     sitter = sitterArray[0]
     await sitter.update_from_dict(sitterReqBody.dict(exclude_unset=True))
     await sitter.save()
     latestSitter = await models.Sitter.get(appuser_id=appuser_id)
     return latestSitter
-  else:
-    latestSitter = await models.Sitter.create(appuser_id=appuser_id, **sitterReqBody.dict())  
-    return latestSitter
+  else: #the sitter does not yet exist, so create it
+    latestSitter = await models.Sitter.create(appuser_id=appuser_id, **sitterReqBody.dict())
+    #update is_sitter on appuser
+    userArray = await models.Appuser.filter(id=appuser_id)
+    user = userArray[0]
+    user.is_sitter = True
+    await user.save()
+
+    response = {}
+    response["sitter"] = latestSitter
+    response["appuser"] = user
+    return response
 
 @app.get("/appuser-extended/{id}", status_code=200) 
 async def get_detailed_user_info_by_id(id: int):     
@@ -112,6 +121,7 @@ async def set_user_info(id: int, appuserReqBody: basemodels.UpdateAppuserBody, s
       else: #create a new sitter record
         latestSitter = await models.Sitter.create(appuser_id=id, **sitterReqBody.dict())  
         response["sitter"] = latestSitter
+        appuser.is_sitter = True #update is_sitter on appuser
     
     #update the appuser record
     await appuser.update_from_dict(appuserReqBody.dict(exclude_unset=True))

@@ -201,6 +201,7 @@ async def get_detailed_user_info_by_id(id: int):
   else:
     raise HTTPException(status_code=404, detail=f'User Not Found')
 
+# no longer expecting to update appuser and sitter records at once, so to be removed? otherwise needs to be further tested and refactored
 @app.post("/appuser-extended/{id}", status_code=200) 
 async def set_user_info(id: int, appuserReqBody: basemodels.UpdateAppuserBody, sitterReqBody: basemodels.SetSitterBody | None = None):   
   appuserArray = await models.Appuser.filter(id=id) 

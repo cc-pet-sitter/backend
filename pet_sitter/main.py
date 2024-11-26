@@ -155,10 +155,10 @@ async def update_appuser_info(id: int, appuserReqBody: basemodels.UpdateAppuserB
   
 @app.get("/sitter/{appuser_id}", status_code=200) 
 async def get_sitter_by_appuser_id(appuser_id: int):   
-  sitterArray = await models.Sitter.filter(appuser_id=appuser_id) 
+  sitter = await models.Sitter.filter(appuser_id=appuser_id).first()
   
-  if sitterArray:
-    return sitterArray[0] 
+  if sitter:
+    return sitter
   else:
     raise HTTPException(status_code=404, detail=f'Sitter Not Found')
 

@@ -140,12 +140,10 @@ async def get_appuser_by_id(id: int):
   
 @app.put("/appuser/{id}", status_code=200) 
 async def update_appuser_info(id: int, appuserReqBody: basemodels.UpdateAppuserBody, decoded_token: dict = Depends(verify_firebase_token)):  
-  appuserArray = await models.Appuser.filter(id=id) 
+  appuser = await models.Appuser.filter(id=id).first()
   
-  if not appuserArray:
+  if not appuser:
     raise HTTPException(status_code=404, detail='Appuser Not Found')
-  
-  appuser = appuserArray[0]
   
   if decoded_token['uid'] != appuser.firebase_user_id:
     raise HTTPException(status_code=403, detail="Not authorized to update this user.")

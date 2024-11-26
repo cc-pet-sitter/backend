@@ -187,17 +187,14 @@ async def set_user_info(appuser_id: int, sitterReqBody: basemodels.SetSitterBody
 
 @app.get("/appuser-extended/{id}", status_code=200) 
 async def get_detailed_user_info_by_id(id: int):     
-  appuserArray = await models.Appuser.filter(id=id) 
+  appuser = await models.Appuser.filter(id=id).first()
   
-  if appuserArray:
-    appuser = appuserArray[0]
-
+  if appuser:
     response = {}
     response["appuser"] = appuser
 
-    sitterArray = await models.Sitter.filter(appuser_id=id)
-    if sitterArray: #add the sitter record to the response
-      sitter = sitterArray[0]
+    sitter = await models.Sitter.filter(appuser_id=id).first()
+    if sitter: #add the sitter record to the response
       response["sitter"] = sitter
 
     return response

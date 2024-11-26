@@ -31,7 +31,7 @@ class UpdateAppuserBody(BaseModel):
   user_bio_picture_src_list: str | None = None
 
 class SetSitterBody(BaseModel):
-  sitter_profile_bio: str | None = None
+  sitter_profile_bio: str
   sitter_bio_picture_src_list: str | None = None
   sitter_house_ok: bool | None = None
   owner_house_ok: bool | None = None

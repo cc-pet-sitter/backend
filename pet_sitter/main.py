@@ -129,12 +129,8 @@ async def log_user_in(decoded_token: dict = Depends(verify_firebase_token)):
         raise HTTPException(status_code=404, detail='User Not Found')
   
 @app.get("/appuser/{id}", status_code=200) 
-async def get_appuser_by_id(id: int, decoded_token: dict = Depends(verify_firebase_token)):   
+async def get_appuser_by_id(id: int):   
   appuser = await models.Appuser.filter(id=id).first() 
-  
-  # Authorization: Only the user themselves can access the profile 
-  if decoded_token['uid'] != appuser.firebase_user_id:
-    raise HTTPException(status_code=403, detail="Not authorized to view this user.")
 
   if appuser:
     return appuser 
@@ -144,12 +140,10 @@ async def get_appuser_by_id(id: int, decoded_token: dict = Depends(verify_fireba
   
 @app.put("/appuser/{id}", status_code=200) 
 async def update_appuser_info(id: int, appuserReqBody: basemodels.UpdateAppuserBody, decoded_token: dict = Depends(verify_firebase_token)):  
-  appuserArray = await models.Appuser.filter(id=id) 
+  appuser = await models.Appuser.filter(id=id).first()
   
-  if not appuserArray:
+  if not appuser:
     raise HTTPException(status_code=404, detail='Appuser Not Found')
-  
-  appuser = appuserArray[0]
   
   if decoded_token['uid'] != appuser.firebase_user_id:
     raise HTTPException(status_code=403, detail="Not authorized to update this user.")
@@ -161,28 +155,26 @@ async def update_appuser_info(id: int, appuserReqBody: basemodels.UpdateAppuserB
   
 @app.get("/sitter/{appuser_id}", status_code=200) 
 async def get_sitter_by_appuser_id(appuser_id: int):   
-  sitterArray = await models.Sitter.filter(appuser_id=appuser_id) 
+  sitter = await models.Sitter.filter(appuser_id=appuser_id).first()
   
-  if sitterArray:
-    return sitterArray[0] 
+  if sitter:
+    return sitter
   else:
     raise HTTPException(status_code=404, detail=f'Sitter Not Found')
 
 @app.post("/sitter/{appuser_id}", status_code=200) 
 async def set_user_info(appuser_id: int, sitterReqBody: basemodels.SetSitterBody):  
-  sitterArray = await models.Sitter.filter(appuser_id=appuser_id)
+  sitter = await models.Sitter.filter(appuser_id=appuser_id).first()
 
-  if sitterArray: # the sitter already exists, so update it
-    sitter = sitterArray[0]
+  if sitter: # the sitter already exists, so update it
     await sitter.update_from_dict(sitterReqBody.dict(exclude_unset=True))
     await sitter.save()
     latestSitter = await models.Sitter.get(appuser_id=appuser_id)
     return latestSitter
-  else: #the sitter does not yet exist, so create it
-    latestSitter = await models.Sitter.create(appuser_id=appuser_id, **sitterReqBody.dict())
+  elif sitterReqBody.sitter_profile_bio: #the sitter does not yet exist, so create it
+    latestSitter = await models.Sitter.create(appuser_id=appuser_id, **sitterReqBody.dict(exclude_unset=True))
     #update is_sitter on appuser
-    userArray = await models.Appuser.filter(id=appuser_id)
-    user = userArray[0]
+    user = await models.Appuser.filter(id=appuser_id).first()
     user.is_sitter = True
     await user.save()
 
@@ -190,26 +182,26 @@ async def set_user_info(appuser_id: int, sitterReqBody: basemodels.SetSitterBody
     response["sitter"] = latestSitter
     response["appuser"] = user
     return response
+  else:
+    raise HTTPException(status_code=400, detail=f'sitter_profile_bio is Mandatory')
 
 @app.get("/appuser-extended/{id}", status_code=200) 
 async def get_detailed_user_info_by_id(id: int):     
-  appuserArray = await models.Appuser.filter(id=id) 
+  appuser = await models.Appuser.filter(id=id).first()
   
-  if appuserArray:
-    appuser = appuserArray[0]
-
+  if appuser:
     response = {}
     response["appuser"] = appuser
 
-    sitterArray = await models.Sitter.filter(appuser_id=id)
-    if sitterArray: #add the sitter record to the response
-      sitter = sitterArray[0]
+    sitter = await models.Sitter.filter(appuser_id=id).first()
+    if sitter: #add the sitter record to the response
       response["sitter"] = sitter
 
     return response
   else:
     raise HTTPException(status_code=404, detail=f'User Not Found')
 
+# no longer expecting to update appuser and sitter records at once, so to be removed? otherwise needs to be further tested and refactored
 @app.post("/appuser-extended/{id}", status_code=200) 
 async def set_user_info(id: int, appuserReqBody: basemodels.UpdateAppuserBody, sitterReqBody: basemodels.SetSitterBody | None = None):   
   appuserArray = await models.Appuser.filter(id=id) 
@@ -291,9 +283,9 @@ async def get_all_relevant_inquiries_for_user(id: int, is_sitter: bool):
 
 @app.get("/inquiry/{id}", status_code=200) 
 async def get_inquiry_by_id(id: int):     
-  inquiryArray = await models.Inquiry.filter(id=id)
-  if inquiryArray:
-    return inquiryArray[0]
+  inquiry = await models.Inquiry.filter(id=id).first()
+  if inquiry:
+    return inquiry
   else:
     raise HTTPException(status_code=404, detail=f'Inquiry Not Found')
 
@@ -307,9 +299,8 @@ async def create_inquiry(reqBody: basemodels.CreateInquiryBody):
 
 @app.patch("/inquiry/{id}", status_code=200) 
 async def update_inquiry_status(id: int, reqBody: basemodels.UpdateInquiryStatusBody):  
-  inquiryArray = await models.Inquiry.filter(id=id) 
-  if inquiryArray:
-    inquiry = inquiryArray[0]
+  inquiry = await models.Inquiry.filter(id=id).first()
+  if inquiry:
     inquiry.inquiry_status = reqBody.inquiry_status
     await inquiry.save()
     updatedInquiry = await models.Inquiry.get(id=id)

@@ -19,6 +19,7 @@ tortoise-orm = {extras = ["asyncpg"], version = "^0.21.7"}
 python-dotenv = "^1.0.1"
 pydantic = "^2.10.0"
 firebase-admin = "^6.6.0"
+faker = "^33.0.0"
 
 
 [build-system]

@@ -6,9 +6,10 @@ from dotenv import load_dotenv # type: ignore
 import os
 import pet_sitter.models as models
 import pet_sitter.basemodels as basemodels
+import pet_sitter.seeds as seeds
 import firebase_admin
 from firebase_admin import credentials, auth
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.cors import CORSMiddleware # type: ignore
 from datetime import datetime
 
 load_dotenv()
@@ -133,7 +134,7 @@ async def get_appuser_by_id(id: int, decoded_token: dict = Depends(verify_fireba
   
   # Authorization: Only the user themselves can access the profile 
   if decoded_token['uid'] != appuser.firebase_user_id:
-        raise HTTPException(status_code=403, detail="Not authorized to view this user.")
+    raise HTTPException(status_code=403, detail="Not authorized to view this user.")
 
   if appuser:
     return appuser 
@@ -146,12 +147,12 @@ async def update_appuser_info(id: int, appuserReqBody: basemodels.UpdateAppuserB
   appuserArray = await models.Appuser.filter(id=id) 
   
   if not appuserArray:
-        raise HTTPException(status_code=404, detail='Appuser Not Found')
+    raise HTTPException(status_code=404, detail='Appuser Not Found')
   
   appuser = appuserArray[0]
   
   if decoded_token['uid'] != appuser.firebase_user_id:
-        raise HTTPException(status_code=403, detail="Not authorized to update this user.")
+    raise HTTPException(status_code=403, detail="Not authorized to update this user.")
 
   await appuser.update_from_dict(appuserReqBody.dict(exclude_unset=True))
   await appuser.save()
@@ -321,6 +322,9 @@ async def startup():
   # Initialize Tortoise ORM with the database connection
   await Tortoise.init(db_url=os.getenv("DATABASE_URL"), modules={"models": ["pet_sitter.models"]})
   await Tortoise.generate_schemas()
+  appusers = await models.Appuser.all()
+  if not appusers:
+    await seeds.seed_db()
 
 @app.on_event("shutdown")
 async def shutdown():

@@ -129,12 +129,8 @@ async def log_user_in(decoded_token: dict = Depends(verify_firebase_token)):
         raise HTTPException(status_code=404, detail='User Not Found')
   
 @app.get("/appuser/{id}", status_code=200) 
-async def get_appuser_by_id(id: int, decoded_token: dict = Depends(verify_firebase_token)):   
+async def get_appuser_by_id(id: int):   
   appuser = await models.Appuser.filter(id=id).first() 
-  
-  # Authorization: Only the user themselves can access the profile 
-  if decoded_token['uid'] != appuser.firebase_user_id:
-    raise HTTPException(status_code=403, detail="Not authorized to view this user.")
 
   if appuser:
     return appuser 

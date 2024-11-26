@@ -172,7 +172,7 @@ async def set_user_info(appuser_id: int, sitterReqBody: basemodels.SetSitterBody
     latestSitter = await models.Sitter.get(appuser_id=appuser_id)
     return latestSitter
   elif sitterReqBody.sitter_profile_bio: #the sitter does not yet exist, so create it
-    latestSitter = await models.Sitter.create(appuser_id=appuser_id, **sitterReqBody.dict())
+    latestSitter = await models.Sitter.create(appuser_id=appuser_id, **sitterReqBody.dict(exclude_unset=True))
     #update is_sitter on appuser
     user = await models.Appuser.filter(id=appuser_id).first()
     user.is_sitter = True

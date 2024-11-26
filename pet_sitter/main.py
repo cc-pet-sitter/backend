@@ -242,7 +242,7 @@ async def set_user_info(id: int, appuserReqBody: basemodels.UpdateAppuserBody, s
 
 #expects to receive the prefecture and city_ward of the user conducting the search + any booleans that are true (meaning the user want to find a sitter meeting those conditions)
 @app.get("/appuser-sitters", status_code=200) 
-async def get_all_matching_sitters(prefecture: str, city_ward: str, sitter_house_ok: bool | None = None, owner_house_ok: bool | None  = None, visit_ok: bool | None  = None, dogs_ok: bool | None  = None, cats_ok: bool | None  = None, fish_ok: bool | None  = None, birds_ok: bool | None  = None, rabbits_ok: bool | None  = None):     
+async def get_all_matching_sitters(prefecture: str, city_ward: str | None = None, sitter_house_ok: bool | None = None, owner_house_ok: bool | None  = None, visit_ok: bool | None  = None, dogs_ok: bool | None  = None, cats_ok: bool | None  = None, fish_ok: bool | None  = None, birds_ok: bool | None  = None, rabbits_ok: bool | None  = None):     
       sitter_search_conditions = {}
       if sitter_house_ok:
         sitter_search_conditions["sitter_house_ok"] = True
@@ -267,7 +267,7 @@ async def get_all_matching_sitters(prefecture: str, city_ward: str, sitter_house
       # if city_ward:
       #   appuser_search_conditions["city_ward"] = True
 
-      matchingSitterArray = await models.Sitter.filter(**sitter_search_conditions).select_related("appuser").filter(appuser__prefecture=prefecture, appuser__city_ward=city_ward) ## Ex. Can use matchingSitterArray[0].appuser.email to get email from Appuser table for one user
+      matchingSitterArray = await models.Sitter.filter(**sitter_search_conditions).select_related("appuser").filter(appuser__prefecture=prefecture) ## Ex. Can use matchingSitterArray[0].appuser.email to get email from Appuser table for one user
       if matchingSitterArray:
         return matchingSitterArray
       else:

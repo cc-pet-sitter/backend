@@ -242,7 +242,7 @@ async def set_user_info(id: int, appuserReqBody: basemodels.UpdateAppuserBody, s
 
 #expects to receive the prefecture and city_ward of the user conducting the search + any booleans that are true (meaning the user want to find a sitter meeting those conditions)
 @app.get("/appuser-sitters", status_code=200) 
-async def get_all_matching_sitters(prefecture: str, city_ward: str | None = None, sitter_house_ok: bool | None = None, owner_house_ok: bool | None  = None, visit_ok: bool | None  = None, dogs_ok: bool | None  = None, cats_ok: bool | None  = None, fish_ok: bool | None  = None, birds_ok: bool | None  = None, rabbits_ok: bool | None  = None):     
+async def get_all_matching_sitters(prefecture: str, city_ward: str, sitter_house_ok: bool | None = None, owner_house_ok: bool | None  = None, visit_ok: bool | None  = None, dogs_ok: bool | None  = None, cats_ok: bool | None  = None, fish_ok: bool | None  = None, birds_ok: bool | None  = None, rabbits_ok: bool | None  = None):     
       sitter_search_conditions = {}
       if sitter_house_ok:
         sitter_search_conditions["sitter_house_ok"] = True
@@ -267,14 +267,19 @@ async def get_all_matching_sitters(prefecture: str, city_ward: str | None = None
       # if city_ward:
       #   appuser_search_conditions["city_ward"] = True
 
-      matchingSitterArray = await models.Sitter.filter(**sitter_search_conditions).select_related("appuser").filter(appuser__prefecture=prefecture) ## Ex. Can use matchingSitterArray[0].appuser.email to get email from Appuser table for one user
+      matchingSitterArray = await models.Sitter.filter(**sitter_search_conditions).select_related("appuser").filter(appuser__prefecture=prefecture, appuser__city_ward=city_ward) ## Ex. Can use matchingSitterArray[0].appuser.email to get email from Appuser table for one user
       if matchingSitterArray:
         return matchingSitterArray
       else:
         raise HTTPException(status_code=404, detail=f'No Matching Sitters Found')
 
 @app.get("/appuser/{id}/inquiry", status_code=200) 
-async def get_all_relevant_inquiries_for_user(id: int, is_sitter: bool):
+async def get_all_relevant_inquiries_for_user(id: int, is_sitter: bool, decoded_token: dict = Depends(verify_firebase_token)):
+  appuser = await models.Appuser.filter(id=id).first()
+  # Authorization: Only the user themselves can access the profile 
+  if decoded_token['uid'] != appuser.firebase_user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to view this user.")
+
   if is_sitter:
       sitterInquiryArray = await models.Inquiry.filter(sitter_appuser_id=id)
       if sitterInquiryArray:
@@ -297,12 +302,12 @@ async def get_inquiry_by_id(id: int):
     raise HTTPException(status_code=404, detail=f'Inquiry Not Found')
 
 @app.post("/inquiry", status_code=201) 
-async def create_inquiry(reqBody: basemodels.CreateInquiryBody):   
-  inquiry = await models.Inquiry.create(**reqBody.dict())  
-  if inquiry:
+async def create_inquiry(reqBody: basemodels.CreateInquiryBody):
+  try:
+    inquiry = await models.Inquiry.create(**reqBody.dict())     
     return inquiry
-  else:
-    raise HTTPException(status_code=500, detail=f'Failed to Add Inquiry')
+  except Exception as e:
+    raise HTTPException(status_code=500, detail=f'Failed to Add Inquiry: {str(e)}')
 
 @app.patch("/inquiry/{id}", status_code=200) 
 async def update_inquiry_status(id: int, reqBody: basemodels.UpdateInquiryStatusBody):  

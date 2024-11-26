@@ -285,9 +285,9 @@ async def get_all_relevant_inquiries_for_user(id: int, is_sitter: bool):
 
 @app.get("/inquiry/{id}", status_code=200) 
 async def get_inquiry_by_id(id: int):     
-  inquiryArray = await models.Inquiry.filter(id=id)
-  if inquiryArray:
-    return inquiryArray[0]
+  inquiry = await models.Inquiry.filter(id=id).first()
+  if inquiry:
+    return inquiry
   else:
     raise HTTPException(status_code=404, detail=f'Inquiry Not Found')
 

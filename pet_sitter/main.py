@@ -301,9 +301,8 @@ async def create_inquiry(reqBody: basemodels.CreateInquiryBody):
 
 @app.patch("/inquiry/{id}", status_code=200) 
 async def update_inquiry_status(id: int, reqBody: basemodels.UpdateInquiryStatusBody):  
-  inquiryArray = await models.Inquiry.filter(id=id) 
-  if inquiryArray:
-    inquiry = inquiryArray[0]
+  inquiry = await models.Inquiry.filter(id=id).first()
+  if inquiry:
     inquiry.inquiry_status = reqBody.inquiry_status
     await inquiry.save()
     updatedInquiry = await models.Inquiry.get(id=id)

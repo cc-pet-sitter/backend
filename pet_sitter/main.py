@@ -261,8 +261,17 @@ async def get_all_matching_sitters(prefecture: str, city_ward: str | None = None
       #   appuser_search_conditions["city_ward"] = True
 
       matchingSitterArray = await models.Sitter.filter(**sitter_search_conditions).select_related("appuser").filter(appuser__prefecture=prefecture) ## Ex. Can use matchingSitterArray[0].appuser.email to get email from Appuser table for one user
+
       if matchingSitterArray:
-        return matchingSitterArray
+        responseArray = []
+
+        for matchingSitter in matchingSitterArray:
+          sitterAppuserPair = {}
+          sitterAppuserPair["sitter"] = matchingSitter
+          sitterAppuserPair["appuser"] = matchingSitter.appuser
+          responseArray.append(sitterAppuserPair)
+          
+        return responseArray
       else:
         raise HTTPException(status_code=404, detail=f'No Matching Sitters Found')
 

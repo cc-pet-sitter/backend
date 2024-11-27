@@ -267,7 +267,12 @@ async def get_all_matching_sitters(prefecture: str, city_ward: str | None = None
         raise HTTPException(status_code=404, detail=f'No Matching Sitters Found')
 
 @app.get("/appuser/{id}/inquiry", status_code=200) 
-async def get_all_relevant_inquiries_for_user(id: int, is_sitter: bool):
+async def get_all_relevant_inquiries_for_user(id: int, is_sitter: bool, decoded_token: dict = Depends(verify_firebase_token)):
+  appuser = await models.Appuser.filter(id=id).first()
+  # Authorization: Only the user themselves can access their related inquiries 
+  if decoded_token['uid'] != appuser.firebase_user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to view these inquiries.")
+
   if is_sitter:
       sitterInquiryArray = await models.Inquiry.filter(sitter_appuser_id=id)
       if sitterInquiryArray:
@@ -290,12 +295,12 @@ async def get_inquiry_by_id(id: int):
     raise HTTPException(status_code=404, detail=f'Inquiry Not Found')
 
 @app.post("/inquiry", status_code=201) 
-async def create_inquiry(reqBody: basemodels.CreateInquiryBody):   
-  inquiry = await models.Inquiry.create(**reqBody.dict())  
-  if inquiry:
+async def create_inquiry(reqBody: basemodels.CreateInquiryBody):
+  try:
+    inquiry = await models.Inquiry.create(**reqBody.dict())     
     return inquiry
-  else:
-    raise HTTPException(status_code=500, detail=f'Failed to Add Inquiry')
+  except Exception as e:
+    raise HTTPException(status_code=500, detail=f'Failed to Add Inquiry: {str(e)}')
 
 @app.patch("/inquiry/{id}", status_code=200) 
 async def update_inquiry_status(id: int, reqBody: basemodels.UpdateInquiryStatusBody):  

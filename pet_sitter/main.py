@@ -276,9 +276,9 @@ async def get_all_matching_sitters(prefecture: str, city_ward: str | None = None
 @app.get("/appuser/{id}/inquiry", status_code=200) 
 async def get_all_relevant_inquiries_for_user(id: int, is_sitter: bool, decoded_token: dict = Depends(verify_firebase_token)):
   appuser = await models.Appuser.filter(id=id).first()
-  # Authorization: Only the user themselves can access their related enquiries 
+  # Authorization: Only the user themselves can access their related inquiries 
   if decoded_token['uid'] != appuser.firebase_user_id:
-        raise HTTPException(status_code=403, detail="Not authorized to view this enquire.")
+        raise HTTPException(status_code=403, detail="Not authorized to view these inquiries.")
 
   if is_sitter:
       sitterInquiryArray = await models.Inquiry.filter(sitter_appuser_id=id)

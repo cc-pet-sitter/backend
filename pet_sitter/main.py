@@ -115,16 +115,7 @@ async def log_user_in(decoded_token: dict = Depends(verify_firebase_token)):
         await user.save()
     
         # Fetch other user data as needed
-        return {
-            "status": "ok",
-            "user_id": user.id,
-            "email": user.email,
-            "firstname": user.firstname,
-            "lastname": user.lastname,
-            "is_sitter": user.is_sitter,
-            "profile_picture_src": user.profile_picture_src,
-            # Add other fields as necessary
-        }
+        return user
     else:
         raise HTTPException(status_code=404, detail='User Not Found')
   

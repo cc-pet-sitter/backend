@@ -94,7 +94,7 @@ async def sign_user_up(reqBody: basemodels.SignUpBody, decoded_token: dict = Dep
   )
       
   if appuser:      
-      return {"status":"ok", "user_id": appuser.id}
+      return {"status":"ok", "appuser": appuser}
   else:
       raise HTTPException(status_code=500, detail='Failed to Add User')
 

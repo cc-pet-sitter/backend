@@ -304,9 +304,16 @@ async def create_inquiry(reqBody: basemodels.CreateInquiryBody):
 
 @app.patch("/inquiry/{id}", status_code=200) 
 async def update_inquiry_status(id: int, reqBody: basemodels.UpdateInquiryStatusBody):  
+  if reqBody.inquiry_status not in ["approved", "rejected"]:
+    raise HTTPException(status_code=400, detail=f'Invalid Status Received')
+
   inquiry = await models.Inquiry.filter(id=id).first()
   if inquiry:
+    if inquiry.inquiry_status != "requested":
+       raise HTTPException(status_code=400, detail=f'Inquiry Already Finalized')
+
     inquiry.inquiry_status = reqBody.inquiry_status
+    inquiry.inquiry_finalized = datetime.now()
     await inquiry.save()
     updatedInquiry = await models.Inquiry.get(id=id)
     return updatedInquiry

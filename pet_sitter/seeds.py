@@ -15,6 +15,22 @@ def generate_date_range():
         start_date, end_date = end_date, start_date
     return start_date, end_date
 
+async def create_messages(inquiry: int, initiator: int, recipient: int):
+  await models.Message.create(
+    inquiry=inquiry,
+    author_appuser=initiator,
+    recipient_appuser=recipient,
+    content="Hey, how are you doing?"
+  )
+  print(f"Message sent from Appuser {initiator} for Appuser {recipient}")
+  await models.Message.create(
+    inquiry=inquiry,
+    author_appuser=recipient,
+    recipient_appuser=initiator,
+    content="I'm doing great! How about you?"
+  )
+  print(f"Message sent from Appuser {recipient} for Appuser {initiator}")
+
 photos = [
    "https://live.staticflickr.com/62/207176169_60738224b6_c.jpg",
    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQmkRHRtkrvooPGjWA-GsLDUOyy8hV7F8fRQA&s",
@@ -135,5 +151,10 @@ async def seed_db():
           inquiry_finalized=fake.date_time_this_year() if choice([True, False]) else None
       )
       print(f"Created Inquiry of Status {inquiry.inquiry_status} for Owner {owner.firstname} to Sitter {sitter.firstname} from {start_date} to {end_date}")
+
+      if i % 2 == 0:
+        await create_messages(inquiry, owner, sitter)
+      else:
+        await create_messages(inquiry, sitter, owner)
 
   print("Seeding completed!")

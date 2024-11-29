@@ -309,7 +309,7 @@ async def update_inquiry_status(id: int, reqBody: basemodels.UpdateInquiryStatus
 
   inquiry = await models.Inquiry.filter(id=id).first()
   if inquiry:
-    if inquiry.inquiry_status != "requested":
+    if inquiry.inquiry_status not in [models.InquiryStatus.REQUESTED]:
        raise HTTPException(status_code=400, detail=f'Inquiry Already Finalized')
 
     inquiry.inquiry_status = reqBody.inquiry_status

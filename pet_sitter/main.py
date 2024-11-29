@@ -264,7 +264,7 @@ async def get_all_matching_sitters(prefecture: str, city_ward: str | None = None
           
         return responseArray
       else:
-        raise HTTPException(status_code=404, detail=f'No Matching Sitters Found')
+        return []
 
 @app.get("/appuser/{id}/inquiry", status_code=200) 
 async def get_all_relevant_inquiries_for_user(id: int, is_sitter: bool, decoded_token: dict = Depends(verify_firebase_token)):
@@ -278,13 +278,13 @@ async def get_all_relevant_inquiries_for_user(id: int, is_sitter: bool, decoded_
       if sitterInquiryArray:
         return sitterInquiryArray
       else:
-        raise HTTPException(status_code=404, detail=f'No Sitter Inquiries Found')
+        return []
   else:
       ownerInquiryArray = await models.Inquiry.filter(owner_appuser_id=id)
       if ownerInquiryArray:
         return ownerInquiryArray
       else:
-        raise HTTPException(status_code=404, detail=f'No Owner Inquiries Found')
+        return []
 
 @app.get("/inquiry/{id}", status_code=200) 
 async def get_inquiry_by_id(id: int):     
@@ -304,9 +304,16 @@ async def create_inquiry(reqBody: basemodels.CreateInquiryBody):
 
 @app.patch("/inquiry/{id}", status_code=200) 
 async def update_inquiry_status(id: int, reqBody: basemodels.UpdateInquiryStatusBody):  
+  if reqBody.inquiry_status not in ["approved", "rejected"]:
+    raise HTTPException(status_code=400, detail=f'Invalid Status Received')
+
   inquiry = await models.Inquiry.filter(id=id).first()
   if inquiry:
+    if inquiry.inquiry_status != "requested":
+       raise HTTPException(status_code=400, detail=f'Inquiry Already Finalized')
+
     inquiry.inquiry_status = reqBody.inquiry_status
+    inquiry.inquiry_finalized = datetime.now()
     await inquiry.save()
     updatedInquiry = await models.Inquiry.get(id=id)
     return updatedInquiry

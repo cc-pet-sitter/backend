@@ -73,6 +73,7 @@ class Pet(models.Model):
   medications = fields.CharField(null=True, max_length=80)
   special_needs = fields.TextField(null=True)
   profile_picture_src = fields.CharField(null=True, max_length=200)
+  pet_bio_picture_src_list = fields.TextField(null=True)
   appuser = fields.ForeignKeyField("models.Appuser", related_name="pets")
   posted_date = fields.DatetimeField(auto_now_add=True, null=True)
   last_updated = fields.DatetimeField(auto_now=True, null=True)
@@ -80,9 +81,8 @@ class Pet(models.Model):
 
 class Availability(models.Model):
   id = fields.IntField(primary_key=True)
-  sitter = fields.ForeignKeyField("models.Sitter", related_name="availability")
-  start_date = fields.DateField()
-  end_date = fields.DateField()
+  appuser = fields.ForeignKeyField("models.Appuser", related_name="availability")
+  available_date = fields.DateField()
 
 class Review(models.Model):
   id = fields.IntField(primary_key=True)

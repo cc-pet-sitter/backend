@@ -51,10 +51,19 @@ bios = [
   'Cat and rabbit expert.'
 ]
 
+cities = {
+   "Tokyo": ["Shibuya", "Shinjuku", "Minato", "Shinagawa"],
+   "Chiba": ["Urayasu", "Funabashi", "Matsudo", "Narita"],
+   "Kanagawa": ["Yokohama", "Kawasaki", "Kamakura", "Yokosuka"],
+   "Saitama": ["Omiya", "Kawaguchi", "Koshigaya", "Kasukabe"]
+}
+
 async def seed_db():
   appusers = []
 
   for _ in range(100):
+    prefecture = fake.random_element(elements=["Tokyo","Chiba","Saitama","Kanagawa"])
+
     appuser = await models.Appuser.create(
         firstname=fake.first_name(),
         lastname=fake.last_name(),
@@ -67,8 +76,8 @@ async def seed_db():
         last_updated=fake.date_time_this_year(),
         last_login=fake.date_time_this_year(),
         profile_picture_src=fake.random_element(elements=photos),
-        prefecture=fake.random_element(elements=["Tokyo","Chiba","Saitama","Kanagawa"]),
-        # city_ward=fake.random_element(elements=["Minato", "Shinjuku", "Chiyoda", "Taito", "Sumida", "Shinagawa", "Meguro", "Shibuya", "Nakano", "Toshima", "Kita"]),
+        prefecture=prefecture,
+        city_ward=fake.random_element(elements=cities[prefecture]),
         street_address=fake.street_address(),
         postal_code=fake_jp.zipcode(),  # Fake Japanese postal code
         account_language=fake.random_element(elements=["english", "japanese"]),

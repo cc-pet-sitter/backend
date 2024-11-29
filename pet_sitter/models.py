@@ -81,7 +81,7 @@ class Pet(models.Model):
 
 class Availability(models.Model):
   id = fields.IntField(primary_key=True)
-  sitter = fields.ForeignKeyField("models.Sitter", related_name="availability")
+  appuser = fields.ForeignKeyField("models.Appuser", related_name="availability")
   available_date = fields.DateField()
 
 class Review(models.Model):

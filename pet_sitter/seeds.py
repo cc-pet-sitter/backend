@@ -105,6 +105,14 @@ async def seed_db():
           )
           print(f"Created a Sitter profile for Appuser {appuser.id}: {appuser.firstname} {appuser.lastname}")
 
+          for _ in range(5):
+            available_date = fake.date_time_this_year(False, True) # before_now: bool, after_now: bool
+            await models.Availability.create(
+              appuser=appuser,
+              available_date=available_date
+            )
+            print(f"Sitter {appuser.firstname} is available on {available_date}")
+
   for i in range(100):  # Create fake inquiries
       owner = choice([user for user in appusers if not user.is_sitter])  # Ensure the owner is not a sitter
       sitter = choice([user for user in appusers if user.is_sitter])  # Ensure the sitter is a sitter

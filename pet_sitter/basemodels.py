@@ -65,3 +65,6 @@ class CreateMessageBody(BaseModel):
   author_appuser_id: int
   recipient_appuser_id: int
   content: str
+
+class CreateAvailabilityBody(BaseModel):
+  available_date: datetime

@@ -1,4 +1,5 @@
 #start server from root (backend) folder with "poetry run start"
+from typing import List
 from fastapi import FastAPI, HTTPException, Request, status, Depends # type: ignore
 import uvicorn # type: ignore
 from tortoise import Tortoise # type: ignore
@@ -342,11 +343,46 @@ async def create_message(id: int, reqBody: basemodels.CreateMessageBody):
   
 @app.get("/inquiry/{id}/message", status_code=200) 
 async def get_all_messages_from_inquiry(id: int):
-      inquiryMessagesArray = await models.Message.filter(inquiry_id=id)
-      if inquiryMessagesArray:
-        return inquiryMessagesArray
-      else:
-        return []
+  inquiryMessagesArray = await models.Message.filter(inquiry_id=id)
+  if inquiryMessagesArray:
+    return inquiryMessagesArray
+  else:
+    return []
+      
+@app.post("/appuser/{id}/availability", status_code=201) 
+async def create_availabilities(id: int, reqBody: List[basemodels.CreateAvailabilityBody]):
+  responseArray = []
+  
+  for i in range(len(reqBody)):
+    try:
+      availability = await models.Availability.create(appuser_id=id, **reqBody[i].dict())
+      responseArray.append(availability)
+    except Exception as e:
+      raise HTTPException(status_code=500, detail=f'Failed to Add Availability: {str(e)}')
+    
+  return responseArray
+  
+@app.delete("/availability/{id}", status_code=200)
+async def delete_availability(id: int):
+  try:
+    availability = await models.Availability.get(id=id)
+    await availability.delete()
+    return f'Availabilty #{id} has been deleted'
+  except Exception as e:
+    raise HTTPException(status_code=500, detail=f'Failed to Delete Availability: {str(e)}')
+
+@app.get("/appuser/{id}/availability", status_code=200)
+async def get_all_availabilities_for_sitter(id: int):
+  appuser = await models.Appuser.get(id=id)
+
+  if appuser.is_sitter:
+    sitterAvailabilitiesArray = await models.Availability.filter(appuser_id=id)
+    if sitterAvailabilitiesArray:
+      return sitterAvailabilitiesArray
+    else:
+      return []
+  else:
+    raise HTTPException(status_code=400, detail=f'The User is Not a Sitter')
 
 @app.on_event("startup")
 async def startup():

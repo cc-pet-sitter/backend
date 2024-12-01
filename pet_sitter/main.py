@@ -225,6 +225,70 @@ async def set_user_info(id: int, appuserReqBody: basemodels.UpdateAppuserBody, s
   else:
     raise HTTPException(status_code=404, detail=f'User Does Not Exist')
 
+def validate_pet_fields(type_of_animal: str, weight: float):
+  if type_of_animal and type_of_animal not in ["dog", "cat", "bird", "fish", "rabbit"]:
+    raise HTTPException(status_code=400, detail=f'type_of_animal should be "dog", "cat", "bird", "fish", or "rabbit"')
+  
+  if weight and weight <= 0:
+    raise HTTPException(status_code=400, detail=f'"weight" should be a positive number')
+
+@app.post("/appuser/{appuser_id}/pet", status_code=201) 
+async def create_pet_profile(appuser_id: int, reqBody: basemodels.CreatePetBody):  
+  appuser = await models.Appuser.filter(id=appuser_id).first()
+
+  if not appuser:
+    raise HTTPException(status_code=404, detail=f'User Does Not Exist')
+  
+  validate_pet_fields(reqBody.type_of_animal, reqBody.weight)
+
+  newPet = await models.Pet.create(appuser_id=appuser_id, **reqBody.dict(exclude_unset=True))
+
+  if newPet:
+    return newPet
+  else:
+    raise HTTPException(status_code=500, detail=f'Failed to Add Pet')
+  
+@app.put("/pet/{id}", status_code=200) 
+async def update_pet_profile(id: int, reqBody: basemodels.UpdatePetBody):  
+  pet = await models.Pet.filter(id=id).first()
+
+  if not pet:
+    raise HTTPException(status_code=404, detail=f'Pet Not Found')
+
+  validate_pet_fields(reqBody.type_of_animal, reqBody.weight)
+
+  await pet.update_from_dict(reqBody.dict(exclude_unset=True))
+  await pet.save()
+
+  updatedPet = await models.Pet.filter(id=id).first()
+
+  if updatedPet:
+    return updatedPet
+  else:
+    raise HTTPException(status_code=500, detail=f'Failed to Update Pet Profile')
+  
+@app.get("/appuser/{appuser_id}/pet", status_code=200) 
+async def get_all_pets_for_user(appuser_id: int): 
+  appuser = await models.Appuser.filter(id=appuser_id).first()
+
+  if not appuser:
+    raise HTTPException(status_code=404, detail=f'User Does Not Exist')
+  
+  userPetsArray = await models.Pet.filter(appuser_id=appuser_id)
+  if userPetsArray:
+    return userPetsArray
+  else:
+    return []
+  
+@app.get("/pet/{id}", status_code=200) 
+async def get_pet_by_id(id: int): 
+  pet = await models.Pet.filter(id=id).first()
+
+  if not pet:
+    raise HTTPException(status_code=404, detail=f'Pet Not Found')
+  
+  return pet
+
 #expects to receive the prefecture and city_ward of the user conducting the search + any booleans that are true (meaning the user want to find a sitter meeting those conditions)
 @app.get("/appuser-sitters", status_code=200) 
 async def get_all_matching_sitters(prefecture: str, city_ward: str | None = None, sitter_house_ok: bool | None = None, owner_house_ok: bool | None  = None, visit_ok: bool | None  = None, dogs_ok: bool | None  = None, cats_ok: bool | None  = None, fish_ok: bool | None  = None, birds_ok: bool | None  = None, rabbits_ok: bool | None  = None):     

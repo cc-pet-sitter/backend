@@ -68,3 +68,9 @@ class CreateMessageBody(BaseModel):
 
 class CreateAvailabilityBody(BaseModel):
   available_date: datetime
+
+class CreateReviewBody(BaseModel):
+  author_appuser_id: int
+  recipient_appuser_type: str
+  comment: str | None = None
+  score: int

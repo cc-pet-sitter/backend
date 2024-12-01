@@ -60,3 +60,8 @@ class UpdateInquiryContentBody(BaseModel):
   desired_service: str | None = None
   pet_id_list: str | None = None
   additional_info: str | None = None
+
+class CreateMessageBody(BaseModel):
+  author_appuser_id: int
+  recipient_appuser_id: int
+  content: str

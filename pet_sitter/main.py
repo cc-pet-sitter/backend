@@ -331,6 +331,22 @@ async def update_inquiry_content(id: int, reqBody: basemodels.UpdateInquiryConte
     return updatedInquiry
   else:
     raise HTTPException(status_code=404, detail=f'Inquiry Not Found')
+  
+@app.post("/inquiry/{id}/message", status_code=201) 
+async def create_message(id: int, reqBody: basemodels.CreateMessageBody):
+  try:
+    message = await models.Message.create(inquiry_id=id, **reqBody.dict())
+    return message
+  except Exception as e:
+    raise HTTPException(status_code=500, detail=f'Failed to Add Message: {str(e)}')
+  
+@app.get("/inquiry/{id}/message", status_code=200) 
+async def get_all_messages_from_inquiry(id: int):
+      inquiryMessagesArray = await models.Message.filter(inquiry_id=id)
+      if inquiryMessagesArray:
+        return inquiryMessagesArray
+      else:
+        return []
 
 @app.on_event("startup")
 async def startup():

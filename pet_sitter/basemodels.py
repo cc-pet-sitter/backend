@@ -74,3 +74,29 @@ class CreateReviewBody(BaseModel):
   recipient_appuser_type: str
   comment: str | None = None
   score: int
+
+class CreatePetBody(BaseModel):
+  name: str
+  type_of_animal: str
+  subtype: str | None = None
+  weight: float | None = None
+  birthday: datetime
+  known_allergies: str | None = None
+  medications: str | None = None
+  special_needs: str | None = None
+  profile_picture_src: str | None = None
+  pet_bio_picture_src_list: str | None = None
+  profile_bio: str | None = None
+
+class UpdatePetBody(BaseModel):
+  name: str | None = None
+  type_of_animal: str | None = None
+  subtype: str | None = None
+  weight: float | None = None
+  birthday: datetime | None = None
+  known_allergies: str | None = None
+  medications: str | None = None
+  special_needs: str | None = None
+  profile_picture_src: str | None = None
+  pet_bio_picture_src_list: str | None = None
+  profile_bio: str | None = None

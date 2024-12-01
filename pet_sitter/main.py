@@ -1,4 +1,5 @@
 #start server from root (backend) folder with "poetry run start"
+from typing import List
 from fastapi import FastAPI, HTTPException, Request, status, Depends # type: ignore
 import uvicorn # type: ignore
 from tortoise import Tortoise # type: ignore
@@ -319,6 +320,128 @@ async def update_inquiry_status(id: int, reqBody: basemodels.UpdateInquiryStatus
     return updatedInquiry
   else:
     raise HTTPException(status_code=404, detail=f'Inquiry Not Found')
+
+@app.put("/inquiry/{id}", status_code=200) 
+async def update_inquiry_content(id: int, reqBody: basemodels.UpdateInquiryContentBody):  
+
+  inquiry = await models.Inquiry.filter(id=id).first()
+  if inquiry:
+    await inquiry.update_from_dict(reqBody.dict(exclude_unset=True))
+    await inquiry.save()
+    updatedInquiry = await models.Inquiry.get(id=id)
+    return updatedInquiry
+  else:
+    raise HTTPException(status_code=404, detail=f'Inquiry Not Found')
+  
+@app.post("/inquiry/{id}/message", status_code=201) 
+async def create_message(id: int, reqBody: basemodels.CreateMessageBody):
+  try:
+    message = await models.Message.create(inquiry_id=id, **reqBody.dict())
+    return message
+  except Exception as e:
+    raise HTTPException(status_code=500, detail=f'Failed to Add Message: {str(e)}')
+  
+@app.get("/inquiry/{id}/message", status_code=200) 
+async def get_all_messages_from_inquiry(id: int):
+  inquiryMessagesArray = await models.Message.filter(inquiry_id=id)
+  if inquiryMessagesArray:
+    return inquiryMessagesArray
+  else:
+    return []
+      
+@app.post("/appuser/{id}/availability", status_code=201) 
+async def create_availabilities(id: int, reqBody: List[basemodels.CreateAvailabilityBody]):
+  responseArray = []
+  
+  for i in range(len(reqBody)):
+    try:
+      availability = await models.Availability.create(appuser_id=id, **reqBody[i].dict())
+      responseArray.append(availability)
+    except Exception as e:
+      raise HTTPException(status_code=500, detail=f'Failed to Add Availability: {str(e)}')
+    
+  return responseArray
+  
+@app.delete("/availability/{id}", status_code=200)
+async def delete_availability(id: int):
+  try:
+    availability = await models.Availability.get(id=id)
+    await availability.delete()
+    return f'Availabilty #{id} has been deleted'
+  except Exception as e:
+    raise HTTPException(status_code=500, detail=f'Failed to Delete Availability: {str(e)}')
+
+@app.get("/appuser/{id}/availability", status_code=200)
+async def get_all_availabilities_for_sitter(id: int):
+  appuser = await models.Appuser.get(id=id)
+
+  if appuser.is_sitter:
+    sitterAvailabilitiesArray = await models.Availability.filter(appuser_id=id)
+    if sitterAvailabilitiesArray:
+      return sitterAvailabilitiesArray
+    else:
+      return []
+  else:
+    raise HTTPException(status_code=400, detail=f'The User is Not a Sitter')
+  
+@app.post("/appuser/{id}/review", status_code=201) 
+async def create_review(id: int, reqBody: basemodels.CreateReviewBody):
+  if reqBody.recipient_appuser_type not in ["sitter", "owner"]:
+    raise HTTPException(status_code=400, detail=f'recipient_appuser_type should be about "owner" or about "sitter"')
+  
+  if reqBody.score > 5 or reqBody.score < 1:
+    raise HTTPException(status_code=400, detail=f'"score" should be an integer between 1 and 5')
+  
+  recipient = await models.Appuser.get(id=id)
+  author = await models.Appuser.get(id=reqBody.author_appuser_id)
+
+  if not recipient or not author:
+    raise HTTPException(status_code=404, detail=f'User(s) Not Found')
+
+  response = {}
+
+  try:
+    review = await models.Review.create(recipient_appuser_id=id, **reqBody.dict())
+    response["review"] = review
+
+    if not recipient.average_user_rating:
+      recipient.average_user_rating = review.score
+      await recipient.save()
+      response["appuser"] = recipient
+    else:
+      reviewArray = await get_all_reviews_for_user(id)
+      reviewCount = len(reviewArray)
+      scoreSum = 0
+
+      for i in range(reviewCount):
+        scoreSum += reviewArray[i].score
+
+      recipient.average_user_rating = scoreSum / reviewCount
+      await recipient.save()
+      response["appuser"] = recipient
+
+    return response
+  except Exception as e:
+    raise HTTPException(status_code=500, detail=f'Failed to Add Review: {str(e)}')
+  
+@app.get("/appuser/{id}/review", status_code=200) 
+async def get_all_reviews_for_user(id: int, recipient_appuser_type: str | None = None):
+  appuser = await models.Appuser.get(id=id)
+
+  if not appuser:
+    raise HTTPException(status_code=404, detail=f'User Not Found')
+
+  appuserReviewsArray = []
+
+  if recipient_appuser_type == "owner" or recipient_appuser_type == "sitter":
+    appuserReviewsArray = await models.Review.filter(recipient_appuser_id=id, recipient_appuser_type=recipient_appuser_type)
+  else:
+    appuserReviewsArray = await models.Review.filter(recipient_appuser_id=id)
+
+  if appuserReviewsArray:
+    return appuserReviewsArray
+  else:
+    return []
 
 @app.on_event("startup")
 async def startup():

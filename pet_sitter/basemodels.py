@@ -53,3 +53,24 @@ class CreateInquiryBody(BaseModel):
 
 class UpdateInquiryStatusBody(BaseModel):
   inquiry_status: str
+
+class UpdateInquiryContentBody(BaseModel):
+  start_date: datetime | None = None
+  end_date: datetime | None = None
+  desired_service: str | None = None
+  pet_id_list: str | None = None
+  additional_info: str | None = None
+
+class CreateMessageBody(BaseModel):
+  author_appuser_id: int
+  recipient_appuser_id: int
+  content: str
+
+class CreateAvailabilityBody(BaseModel):
+  available_date: datetime
+
+class CreateReviewBody(BaseModel):
+  author_appuser_id: int
+  recipient_appuser_type: str
+  comment: str | None = None
+  score: int

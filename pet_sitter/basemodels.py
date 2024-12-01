@@ -53,3 +53,10 @@ class CreateInquiryBody(BaseModel):
 
 class UpdateInquiryStatusBody(BaseModel):
   inquiry_status: str
+
+class UpdateInquiryContentBody(BaseModel):
+  start_date: datetime | None = None
+  end_date: datetime | None = None
+  desired_service: str | None = None
+  pet_id_list: str | None = None
+  additional_info: str | None = None

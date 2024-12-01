@@ -320,6 +320,18 @@ async def update_inquiry_status(id: int, reqBody: basemodels.UpdateInquiryStatus
   else:
     raise HTTPException(status_code=404, detail=f'Inquiry Not Found')
 
+@app.put("/inquiry/{id}", status_code=200) 
+async def update_inquiry_content(id: int, reqBody: basemodels.UpdateInquiryContentBody):  
+
+  inquiry = await models.Inquiry.filter(id=id).first()
+  if inquiry:
+    await inquiry.update_from_dict(reqBody.dict(exclude_unset=True))
+    await inquiry.save()
+    updatedInquiry = await models.Inquiry.get(id=id)
+    return updatedInquiry
+  else:
+    raise HTTPException(status_code=404, detail=f'Inquiry Not Found')
+
 @app.on_event("startup")
 async def startup():
   # Initialize Tortoise ORM with the database connection

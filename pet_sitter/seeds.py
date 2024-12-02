@@ -31,6 +31,36 @@ async def create_messages(inquiry: int, initiator: int, recipient: int):
   )
   print(f"Message sent from Appuser {recipient} for Appuser {initiator}")
 
+fakeOwnerCommentsList = [
+   "Absolutely horrible. Never again.",
+   "Not so great. Would not recommend.",
+   "They were okay, but not like amazing. I wish they gave us more updates on our little baby.",
+   "Good and reliable service. No real complaints.",
+   "Fantastic service. I'll definitely be contacting them again."
+]
+
+fakeSitterCommentsList = [
+   "Their pet is a monster and their house is a mess. Never again.",
+   "They only mentioned the one pet in their request, but they actually had two that needed watching...",
+   "It was a lot of work looking after all their pets. I might watch them again if they paid more.",
+   "Their pet acts up sometimes, but is so cute. I'd watch them again.",
+   "Their pet is so cute and well behaved. I'd watch them for free."
+]
+
+async def create_review(author: int, recipient: int, recipient_type: str):
+  randomScore = randint(1,5)
+  index = randomScore - 1
+
+  await models.Review.create(
+    author_appuser=author,
+    recipient_appuser=recipient,
+    recipient_appuser_type=recipient_type,
+    score=randomScore,
+    comment=fakeOwnerCommentsList[index] if recipient_type == "sitter" else fakeSitterCommentsList[index]
+  )
+
+  print(f"Appuser {author} left a {randomScore}-star review for Appuser {recipient}")
+
 photos = [
    "https://live.staticflickr.com/62/207176169_60738224b6_c.jpg",
    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQmkRHRtkrvooPGjWA-GsLDUOyy8hV7F8fRQA&s",
@@ -156,5 +186,9 @@ async def seed_db():
         await create_messages(inquiry, owner, sitter)
       else:
         await create_messages(inquiry, sitter, owner)
+
+      if inquiry.inquiry_status in [models.InquiryStatus.APPROVED]:
+        await create_review(owner, sitter, "sitter")
+        await create_review(sitter, owner, "owner")
 
   print("Seeding completed!")

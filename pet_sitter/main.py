@@ -430,6 +430,40 @@ async def get_all_messages_from_inquiry(id: int):
     return inquiryMessagesArray
   else:
     return []
+  
+@app.get("/inquiry/{id}/pet", status_code=200) 
+async def get_all_pets_from_inquiry(id: int):
+  inquiry = await models.Inquiry.filter(id=id).first()
+
+  if inquiry:
+    petsCSVStr = inquiry.pet_id_list
+
+    if petsCSVStr:
+      petIDList = petsCSVStr.split(",")
+      response = {}
+      response["pets_not_found"] = ""
+      response["pets_array"] = []
+      petsArray = []
+
+      for i in range(len(petIDList)):
+        try:
+          petObject = await get_pet_by_id(petIDList[i])
+          
+          if petObject:
+            petsArray.append(petObject)
+        except:
+            if not response["pets_not_found"]:
+              response["pets_not_found"] += petIDList[i]
+            else:
+              response["pets_not_found"] += ","+ petIDList[i]
+      
+      if petsArray:
+        response["pets_array"] = petsArray
+
+      return response
+
+  else:
+    raise HTTPException(status_code=404, detail=f'Inquiry Does Not Exist')
       
 @app.post("/appuser/{id}/availability", status_code=201) 
 async def create_availabilities(id: int, reqBody: List[basemodels.CreateAvailabilityBody]):

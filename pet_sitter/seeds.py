@@ -22,14 +22,14 @@ async def create_messages(inquiry: int, initiator: int, recipient: int):
     recipient_appuser=recipient,
     content="Hey, how are you doing?"
   )
-  print(f"Message sent from Appuser {initiator} for Appuser {recipient}")
+  print(f"Message sent from Appuser {initiator.id} for Appuser {recipient.id}")
   await models.Message.create(
     inquiry=inquiry,
     author_appuser=recipient,
     recipient_appuser=initiator,
     content="I'm doing great! How about you?"
   )
-  print(f"Message sent from Appuser {recipient} for Appuser {initiator}")
+  print(f"Message sent from Appuser {recipient.id} for Appuser {initiator.id}")
 
 fakeOwnerCommentsList = [
    "Absolutely horrible. Never again.",
@@ -59,7 +59,7 @@ async def create_review(author: int, recipient: int, recipient_type: str):
     comment=fakeOwnerCommentsList[index] if recipient_type == "sitter" else fakeSitterCommentsList[index]
   )
 
-  print(f"Appuser {author} left a {randomScore}-star review for Appuser {recipient}")
+  print(f"Appuser {author.id} left a {randomScore}-star review for Appuser {recipient.id}")
 
 photos = [
    "https://live.staticflickr.com/62/207176169_60738224b6_c.jpg",

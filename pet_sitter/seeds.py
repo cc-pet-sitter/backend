@@ -97,6 +97,7 @@ async def create_pet(appuser: int):
     name=fake.random_element(elements=top_pet_names[randomAnimal]),
     type_of_animal=randomAnimal,
     subtype=fake.random_element(elements=animal_breeds[randomAnimal]),
+    gender=fake.random_element(elements=["male", "female"]),
     weight=randint(1,30),
     birthday=fake.date_time_this_decade(True, False),
     known_allergies="None",

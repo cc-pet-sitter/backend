@@ -193,38 +193,6 @@ async def get_detailed_user_info_by_id(id: int):
   else:
     raise HTTPException(status_code=404, detail=f'User Not Found')
 
-# no longer expecting to update appuser and sitter records at once, so to be removed? otherwise needs to be further tested and refactored
-@app.post("/appuser-extended/{id}", status_code=200) 
-async def set_user_info(id: int, appuserReqBody: basemodels.UpdateAppuserBody, sitterReqBody: basemodels.SetSitterBody | None = None):   
-  appuserArray = await models.Appuser.filter(id=id) 
-  
-  if appuserArray:
-    appuser = appuserArray[0]
-    response = {}
-
-    if sitterReqBody:
-      sitterArray = await models.Sitter.filter(appuser_id=id)
-
-      if sitterArray: #update the retrieved sitter record
-        sitter = sitterArray[0]
-        await sitter.update_from_dict(sitterReqBody.dict(exclude_unset=True))
-        await sitter.save()
-        latestSitter = await models.Sitter.get(appuser_id=id)
-        response["sitter"] = latestSitter
-      else: #create a new sitter record
-        latestSitter = await models.Sitter.create(appuser_id=id, **sitterReqBody.dict())  
-        response["sitter"] = latestSitter
-        appuser.is_sitter = True #update is_sitter on appuser
-    
-    #update the appuser record
-    await appuser.update_from_dict(appuserReqBody.dict(exclude_unset=True))
-    await appuser.save()
-    latestAppuser = await models.Appuser.get(id=id)
-    response["appuser"] = latestAppuser
-    return response
-  else:
-    raise HTTPException(status_code=404, detail=f'User Does Not Exist')
-
 def validate_pet_fields(type_of_animal: str, weight: float):
   if type_of_animal and type_of_animal not in ["dog", "cat", "bird", "fish", "rabbit"]:
     raise HTTPException(status_code=400, detail=f'type_of_animal should be "dog", "cat", "bird", "fish", or "rabbit"')

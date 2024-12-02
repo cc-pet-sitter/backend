@@ -13,6 +13,10 @@ class AnimalType(Enum):
   RABBIT = "rabbit"
   BIRD = "bird"
 
+class AnimalGender(Enum):
+  MALE = "male"
+  FEMALE = "female"
+
 class UserType(Enum):
   OWNER = "owner"
   SITTER = "sitter"
@@ -67,8 +71,9 @@ class Pet(models.Model):
   name = fields.CharField(max_length=40)
   type_of_animal = fields.CharEnumField(AnimalType)
   subtype = fields.CharField(null=True, max_length=40)
+  gender = fields.CharEnumField(AnimalGender, null=True)
   weight = fields.FloatField(null=True)
-  birthday = fields.DateField()
+  birthday = fields.DateField(null=True)
   known_allergies = fields.CharField(null=True, max_length=80)
   medications = fields.CharField(null=True, max_length=80)
   special_needs = fields.TextField(null=True)

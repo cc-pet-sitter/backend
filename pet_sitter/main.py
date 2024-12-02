@@ -289,6 +289,24 @@ async def get_pet_by_id(id: int):
   
   return pet
 
+@app.get("/pet", status_code=200) 
+async def get_all_pets(): 
+  petsArray = await models.Pet.all()
+
+  if petsArray:
+    return petsArray
+  else:
+    return []
+  
+@app.delete("/pet/{id}", status_code=200) 
+async def delete_pet_by_id(id: int): 
+  try:
+    pet = await models.Pet.get(id=id)
+    await pet.delete()
+    return f'Pet profile #{id} has been deleted'
+  except Exception as e:
+    raise HTTPException(status_code=500, detail=f'Failed to Delete Pet Profile: {str(e)}')
+
 #expects to receive the prefecture and city_ward of the user conducting the search + any booleans that are true (meaning the user want to find a sitter meeting those conditions)
 @app.get("/appuser-sitters", status_code=200) 
 async def get_all_matching_sitters(prefecture: str, city_ward: str | None = None, sitter_house_ok: bool | None = None, owner_house_ok: bool | None  = None, visit_ok: bool | None  = None, dogs_ok: bool | None  = None, cats_ok: bool | None  = None, fish_ok: bool | None  = None, birds_ok: bool | None  = None, rabbits_ok: bool | None  = None):     
@@ -412,6 +430,40 @@ async def get_all_messages_from_inquiry(id: int):
     return inquiryMessagesArray
   else:
     return []
+  
+@app.get("/inquiry/{id}/pet", status_code=200) 
+async def get_all_pets_from_inquiry(id: int):
+  inquiry = await models.Inquiry.filter(id=id).first()
+
+  if inquiry:
+    petsCSVStr = inquiry.pet_id_list
+
+    if petsCSVStr:
+      petIDList = petsCSVStr.split(",")
+      response = {}
+      response["pets_not_found"] = ""
+      response["pets_array"] = []
+      petsArray = []
+
+      for i in range(len(petIDList)):
+        try:
+          petObject = await get_pet_by_id(petIDList[i])
+          
+          if petObject:
+            petsArray.append(petObject)
+        except:
+            if not response["pets_not_found"]:
+              response["pets_not_found"] += petIDList[i]
+            else:
+              response["pets_not_found"] += ","+ petIDList[i]
+      
+      if petsArray:
+        response["pets_array"] = petsArray
+
+      return response
+
+  else:
+    raise HTTPException(status_code=404, detail=f'Inquiry Does Not Exist')
       
 @app.post("/appuser/{id}/availability", status_code=201) 
 async def create_availabilities(id: int, reqBody: List[basemodels.CreateAvailabilityBody]):

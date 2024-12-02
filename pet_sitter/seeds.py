@@ -20,14 +20,14 @@ async def create_messages(inquiry: int, initiator: int, recipient: int):
     inquiry=inquiry,
     author_appuser=initiator,
     recipient_appuser=recipient,
-    content="Hey, how are you doing?"
+    content=f"Hey, how are you doing, {recipient.firstname}?"
   )
   print(f"Message sent from Appuser {initiator.id} for Appuser {recipient.id}")
   await models.Message.create(
     inquiry=inquiry,
     author_appuser=recipient,
     recipient_appuser=initiator,
-    content="I'm doing great! How about you?"
+    content=f"I'm doing great! How about you, {initiator.firstname}?"
   )
   print(f"Message sent from Appuser {recipient.id} for Appuser {initiator.id}")
 
@@ -60,6 +60,63 @@ async def create_review(author: int, recipient: int, recipient_type: str):
   )
 
   print(f"Appuser {author.id} left a {randomScore}-star review for Appuser {recipient.id}")
+
+animal_breeds = {
+    "dog": ["Labrador Retriever", "German Shepherd", "Golden Retriever"],
+    "cat": ["Persian", "Maine Coon", "Siamese"],
+    "fish": ["Goldfish", "Betta", "Guppy"],
+    "bird": ["Parakeet", "Cockatiel", "African Grey Parrot"],
+    "rabbit": ["Himalayan", "Mini Rex", "Holland Lop"]
+}
+
+top_pet_names = {
+    "dog": ["Bella", "Max", "Luna", "Charlie", "Lucy", "Maru", "Hana", "Riku", "Kuro", "Chibi"],
+    "cat": ["Milo", "Simba", "Oliver", "Lily", "Chloe", "Momo", "Sora", "Kiki", "Tora", "Yuki"],
+    "fish": ["Nibbles", "Bubbles", "Finn", "Goldie", "Splash", "Koi", "Sui", "Maru", "Beni", "Sora"],
+    "bird": ["Tweety", "Sunny", "Buddy", "Kiwi", "Sky", "Tori", "Hato", "Mimi", "Chiroru", "Sora"],
+    "rabbit": ["Thumper", "Coco", "Flopsy", "Bunny", "Peanut", "Usagi", "Mochi", "Haru", "Purin", "Yume"]
+}
+
+pet_biographies = [
+    "Always ready for a walk and loves cuddling after a long day of play.",
+    "A curious explorer who loves to perch in the sun and watch the world go by.",
+    "Loves to swim and chase after anything that moves in the water.",
+    "Affectionate and mischievous, always getting into trouble with a wagging tail.",
+    "A playful companion who enjoys snuggling up with a soft blanket at night.",
+    "Quiet and gentle, yet always watching over the house with keen eyes.",
+    "A foodie at heart who will always be first in line for dinner time.",
+    "Adventurous and brave, with a heart full of energy for every new day.",
+    "Enjoys a good nap as much as a fun game, always finding a sunny spot to rest.",
+    "Loyal and protective, ready to keep an eye on the family no matter what."
+]
+
+async def create_pet(appuser: int):
+  randomAnimal = fake.random_element(elements=["dog", "cat", "fish", "bird", "rabbit"])
+
+  pet = await models.Pet.create(
+    name=fake.random_element(elements=top_pet_names[randomAnimal]),
+    type_of_animal=randomAnimal,
+    subtype=fake.random_element(elements=animal_breeds[randomAnimal]),
+    weight=randint(1,30),
+    birthday=fake.date_time_this_decade(True, False),
+    known_allergies="None",
+    medications="None",
+    special_needs="None",
+    profile_picture_src=fake.random_element(elements=photos),
+    pet_bio_picture_src_list=f'{fake.random_element(elements=photos)},{fake.random_element(elements=photos)},{fake.random_element(elements=photos)}',
+    appuser=appuser,
+    profile_bio=fake.random_element(elements=pet_biographies),
+  )
+
+  print(f"Added {pet.name} the {pet.type_of_animal} ({pet.subtype}) for Appuser {appuser.id}")
+
+async def get_all_pets_for_user(appuser_id: int): 
+  userPetsArray = await models.Pet.filter(appuser_id=appuser_id)
+
+  if userPetsArray:
+    return userPetsArray
+  else:
+    return []
 
 photos = [
    "https://live.staticflickr.com/62/207176169_60738224b6_c.jpg",
@@ -159,7 +216,9 @@ async def seed_db():
             )
             print(f"Sitter {appuser.firstname} is available on {available_date}")
       else:
-         pass # handle pet seeding
+         randomPetCount = randint(1,3)
+         for i in range(randomPetCount):
+          await create_pet(appuser)
 
   for i in range(100):  # Create fake inquiries
       owner = choice([user for user in appusers if not user.is_sitter])  # Ensure the owner is not a sitter
@@ -167,8 +226,14 @@ async def seed_db():
       
       start_date, end_date = generate_date_range()
 
-      # Generate a list of pet IDs for the inquiry
-      pet_id_list = "1,2,3,4,5" # This is hardcoded and fake for now because pets don't exist in the db yet
+      petList = await get_all_pets_for_user(owner.id)
+      pet_id_list = ""
+
+      for i in range(len(petList)):
+        if not pet_id_list:
+            pet_id_list += str(petList[i].id)
+        else:
+            pet_id_list += "," + str(petList[i].id)
 
       inquiry = await models.Inquiry.create(
           owner_appuser=owner,

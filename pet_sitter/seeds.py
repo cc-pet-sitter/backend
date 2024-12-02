@@ -118,9 +118,9 @@ async def seed_db():
         average_user_rating=randint(1,5),
         user_profile_bio=f'{fake.random_element(elements=bios)} {fake.random_element(elements=bios)} {fake.random_element(elements=bios)}',
         user_bio_picture_src_list=f'{fake.random_element(elements=photos)},{fake.random_element(elements=photos)},{fake.random_element(elements=photos)}',
-        account_created=fake.date_time_this_year(),
-        last_updated=fake.date_time_this_year(),
-        last_login=fake.date_time_this_year(),
+        account_created=fake.date_time_this_year(True, False),
+        last_updated=fake.date_time_this_year(True, False),
+        last_login=fake.date_time_this_year(True, False),
         profile_picture_src=fake.random_element(elements=photos),
         prefecture=prefecture,
         city_ward=fake.random_element(elements=cities[prefecture]),
@@ -158,6 +158,8 @@ async def seed_db():
               available_date=available_date
             )
             print(f"Sitter {appuser.firstname} is available on {available_date}")
+      else:
+         pass # handle pet seeding
 
   for i in range(100):  # Create fake inquiries
       owner = choice([user for user in appusers if not user.is_sitter])  # Ensure the owner is not a sitter
@@ -177,8 +179,8 @@ async def seed_db():
           desired_service=choice([models.PetServices.OWNER_HOUSE, models.PetServices.SITTER_HOUSE, models.PetServices.VISIT]),
           pet_id_list=pet_id_list, 
           additional_info=fake.text(max_nb_chars=100),
-          inquiry_submitted=fake.date_time_this_year(),
-          inquiry_finalized=fake.date_time_this_year() if choice([True, False]) else None
+          inquiry_submitted=fake.date_time_this_year(True, False),
+          inquiry_finalized=fake.date_time_this_year(True, False) if choice([True, False]) else None
       )
       print(f"Created Inquiry of Status {inquiry.inquiry_status} for Owner {owner.firstname} to Sitter {sitter.firstname} from {start_date} to {end_date}")
 

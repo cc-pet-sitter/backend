@@ -193,21 +193,24 @@ async def get_detailed_user_info_by_id(id: int):
   else:
     raise HTTPException(status_code=404, detail=f'User Not Found')
 
-def validate_pet_fields(type_of_animal: str, weight: float): # need to add gender validation and status codes to related methods
+def validate_pet_fields(type_of_animal: str, weight: float, gender: str): # need to add gender validation and status codes to related methods
   if type_of_animal and type_of_animal not in ["dog", "cat", "bird", "fish", "rabbit"]:
     raise HTTPException(status_code=400, detail=f'type_of_animal should be "dog", "cat", "bird", "fish", or "rabbit"')
   
   if weight and weight <= 0:
     raise HTTPException(status_code=400, detail=f'"weight" should be a positive number')
+  
+  if gender and gender not in ["male", "female"]:
+    raise HTTPException(status_code=400, detail=f'Pet gender should be "male" or "female"')
 
-@app.post("/appuser/{appuser_id}/pet", status_code=201, responses={404: {"description": "User Does Not Exist"}, 500: {"description": "Failed to Add Pet"}}) 
+@app.post("/appuser/{appuser_id}/pet", status_code=201, responses={400: {"description": "Invalid Type of Animal, Invalid Pet Gender, or Weight is Nonpositive"}, 404: {"description": "User Does Not Exist"}, 500: {"description": "Failed to Add Pet"}}) 
 async def create_pet_profile(appuser_id: int, reqBody: basemodels.CreatePetBody):  
   appuser = await models.Appuser.filter(id=appuser_id).first()
 
   if not appuser:
     raise HTTPException(status_code=404, detail=f'User Does Not Exist')
   
-  validate_pet_fields(reqBody.type_of_animal, reqBody.weight)
+  validate_pet_fields(reqBody.type_of_animal, reqBody.weight, reqBody.gender)
 
   newPet = await models.Pet.create(appuser_id=appuser_id, **reqBody.dict(exclude_unset=True))
 
@@ -216,14 +219,14 @@ async def create_pet_profile(appuser_id: int, reqBody: basemodels.CreatePetBody)
   else:
     raise HTTPException(status_code=500, detail=f'Failed to Add Pet')
   
-@app.put("/pet/{id}", status_code=200, responses={404: {"description": "Pet Not Found"}, 500: {"description": "Failed to Update Pet Profile"}}) 
+@app.put("/pet/{id}", status_code=200, responses={400: {"description": "Invalid Type of Animal, Invalid Pet Gender, or Weight is Nonpositive"}, 404: {"description": "Pet Not Found"}, 500: {"description": "Failed to Update Pet Profile"}}) 
 async def update_pet_profile(id: int, reqBody: basemodels.UpdatePetBody):  
   pet = await models.Pet.filter(id=id).first()
 
   if not pet:
     raise HTTPException(status_code=404, detail=f'Pet Not Found')
 
-  validate_pet_fields(reqBody.type_of_animal, reqBody.weight)
+  validate_pet_fields(reqBody.type_of_animal, reqBody.weight, reqBody.gender)
 
   await pet.update_from_dict(reqBody.dict(exclude_unset=True))
   await pet.save()
@@ -353,7 +356,7 @@ async def create_inquiry(reqBody: basemodels.CreateInquiryBody):
   except Exception as e:
     raise HTTPException(status_code=500, detail=f'Failed to Add Inquiry: {str(e)}')
 
-@app.patch("/inquiry/{id}", status_code=200, responses={400: {"description": "Invalid Status Received / Inquiry Already Finalized"}, 404: {"description": "Inquiry Not Found"}}) 
+@app.patch("/inquiry/{id}", status_code=200, responses={400: {"description": "Invalid Status Received or Inquiry Already Finalized"}, 404: {"description": "Inquiry Not Found"}}) 
 async def update_inquiry_status(id: int, reqBody: basemodels.UpdateInquiryStatusBody):  
   if reqBody.inquiry_status not in ["approved", "rejected"]:
     raise HTTPException(status_code=400, detail=f'Invalid Status Received')
@@ -468,7 +471,7 @@ async def get_all_availabilities_for_sitter(id: int):
   else:
     raise HTTPException(status_code=400, detail=f'The User is Not a Sitter')
   
-@app.post("/appuser/{id}/review", status_code=201, responses={400: {"description": "recipient_appuser_type should be about 'owner' or about 'sitter'"}, 404: {"description": "User(s) Not Found"}, 500: {"description": "Failed to Add Review"}}) 
+@app.post("/appuser/{id}/review", status_code=201, responses={400: {"description": "Invalid Recipient Appuser Type or Review Score Not 1-5"}, 404: {"description": "User(s) Not Found"}, 500: {"description": "Failed to Add Review"}}) 
 async def create_review(id: int, reqBody: basemodels.CreateReviewBody):
   if reqBody.recipient_appuser_type not in ["sitter", "owner"]:
     raise HTTPException(status_code=400, detail=f'recipient_appuser_type should be about "owner" or about "sitter"')
@@ -480,7 +483,7 @@ async def create_review(id: int, reqBody: basemodels.CreateReviewBody):
   author = await models.Appuser.get(id=reqBody.author_appuser_id)
 
   if not recipient or not author:
-    raise HTTPException(status_code=404, detail=f'User(s) Not Found')
+    raise HTTPException(status_code=404, detail=f'Author and/or Recipient User Not Found')
 
   response = {}
 

@@ -77,7 +77,7 @@ async def verify_firebase_token(request: Request):
 async def main_route():     
   return "Welcome to Mugi! むぎへようこそ！"
 
-@app.post("/signup", status_code=201, responses={403: {"description": "Email mismatch."}, 401: {"description": "User already exists in the database."}, 500: {"description": "Failed to Add User"}}) 
+@app.post("/signup", status_code=201, responses={401: {"description": "Email mismatch."}, 400: {"description": "User already exists in the database."}, 500: {"description": "Failed to Add User"}}) 
 async def sign_user_up(reqBody: basemodels.SignUpBody, decoded_token: dict = Depends(verify_firebase_token)):  
   # Verify that the email in the token matches the signup email
   if decoded_token.get('email') != reqBody.email:

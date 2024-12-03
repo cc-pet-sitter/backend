@@ -77,11 +77,11 @@ async def verify_firebase_token(request: Request):
 async def main_route():     
   return "Welcome to PetSitter!"
 
-@app.post("/signup", status_code=201) 
+@app.post("/signup", status_code=201, responses={403: {"description": "Email mismatch."}, 401: {"description": "User already exists in the database."}, 500: {"description": "Failed to Add User"}}) 
 async def sign_user_up(reqBody: basemodels.SignUpBody, decoded_token: dict = Depends(verify_firebase_token)):  
   # Verify that the email in the token matches the signup email
   if decoded_token.get('email') != reqBody.email:
-      raise HTTPException(status_code=403, detail="Email mismatch.")
+      raise HTTPException(status_code=401, detail="Email mismatch.")
   
   # Check if user already exists in the database
   existing_user = await models.Appuser.filter(email=reqBody.email).first()
@@ -99,14 +99,14 @@ async def sign_user_up(reqBody: basemodels.SignUpBody, decoded_token: dict = Dep
   else:
       raise HTTPException(status_code=500, detail='Failed to Add User')
 
-@app.post("/login", status_code=200) 
+@app.post("/login", status_code=200, responses={401: {"description": "Invalid token data."}, 404: {"description": "User Not Found"}}) 
 async def log_user_in(decoded_token: dict = Depends(verify_firebase_token)):  
     # Extract email and uid from the decoded token
     email = decoded_token.get('email')
     uid = decoded_token.get('uid')
     
     if not email or not uid:
-        raise HTTPException(status_code=400, detail="Invalid token data.")
+        raise HTTPException(status_code=401, detail="Invalid token data.")
     
     # Fetch user from the database
     user = await models.Appuser.filter(email=email, firebase_user_id=uid).first()
@@ -120,7 +120,7 @@ async def log_user_in(decoded_token: dict = Depends(verify_firebase_token)):
     else:
         raise HTTPException(status_code=404, detail='User Not Found')
   
-@app.get("/appuser/{id}", status_code=200) 
+@app.get("/appuser/{id}", status_code=200, responses={404: {"description": "Appuser Not Found"}}) 
 async def get_appuser_by_id(id: int):   
   appuser = await models.Appuser.filter(id=id).first() 
 
@@ -130,7 +130,7 @@ async def get_appuser_by_id(id: int):
     raise HTTPException(status_code=404, detail=f'Appuser Not Found')
 
   
-@app.put("/appuser/{id}", status_code=200) 
+@app.put("/appuser/{id}", status_code=200, responses={404: {"description": "Appuser Not Found"}, 403: {"description": "Not authorized to update this user."}}) 
 async def update_appuser_info(id: int, appuserReqBody: basemodels.UpdateAppuserBody, decoded_token: dict = Depends(verify_firebase_token)):  
   appuser = await models.Appuser.filter(id=id).first()
   
@@ -145,7 +145,7 @@ async def update_appuser_info(id: int, appuserReqBody: basemodels.UpdateAppuserB
   latestAppuser = await models.Appuser.get(id=id)
   return latestAppuser
   
-@app.get("/sitter/{appuser_id}", status_code=200) 
+@app.get("/sitter/{appuser_id}", status_code=200, responses={404: {"description": "Sitter Not Found"}}) 
 async def get_sitter_by_appuser_id(appuser_id: int):   
   sitter = await models.Sitter.filter(appuser_id=appuser_id).first()
   
@@ -154,7 +154,7 @@ async def get_sitter_by_appuser_id(appuser_id: int):
   else:
     raise HTTPException(status_code=404, detail=f'Sitter Not Found')
 
-@app.post("/sitter/{appuser_id}", status_code=200) 
+@app.post("/sitter/{appuser_id}", status_code=200, responses={400: {"description": "sitter_profile_bio is Mandatory"}}) 
 async def set_user_info(appuser_id: int, sitterReqBody: basemodels.SetSitterBody):  
   sitter = await models.Sitter.filter(appuser_id=appuser_id).first()
 
@@ -177,7 +177,7 @@ async def set_user_info(appuser_id: int, sitterReqBody: basemodels.SetSitterBody
   else:
     raise HTTPException(status_code=400, detail=f'sitter_profile_bio is Mandatory')
 
-@app.get("/appuser-extended/{id}", status_code=200) 
+@app.get("/appuser-extended/{id}", status_code=200, responses={404: {"description": "User Not Found"}}) 
 async def get_detailed_user_info_by_id(id: int):     
   appuser = await models.Appuser.filter(id=id).first()
   
@@ -193,14 +193,14 @@ async def get_detailed_user_info_by_id(id: int):
   else:
     raise HTTPException(status_code=404, detail=f'User Not Found')
 
-def validate_pet_fields(type_of_animal: str, weight: float):
+def validate_pet_fields(type_of_animal: str, weight: float): # need to add gender validation and status codes to related methods
   if type_of_animal and type_of_animal not in ["dog", "cat", "bird", "fish", "rabbit"]:
     raise HTTPException(status_code=400, detail=f'type_of_animal should be "dog", "cat", "bird", "fish", or "rabbit"')
   
   if weight and weight <= 0:
     raise HTTPException(status_code=400, detail=f'"weight" should be a positive number')
 
-@app.post("/appuser/{appuser_id}/pet", status_code=201) 
+@app.post("/appuser/{appuser_id}/pet", status_code=201, responses={404: {"description": "User Does Not Exist"}, 500: {"description": "Failed to Add Pet"}}) 
 async def create_pet_profile(appuser_id: int, reqBody: basemodels.CreatePetBody):  
   appuser = await models.Appuser.filter(id=appuser_id).first()
 
@@ -216,7 +216,7 @@ async def create_pet_profile(appuser_id: int, reqBody: basemodels.CreatePetBody)
   else:
     raise HTTPException(status_code=500, detail=f'Failed to Add Pet')
   
-@app.put("/pet/{id}", status_code=200) 
+@app.put("/pet/{id}", status_code=200, responses={404: {"description": "Pet Not Found"}, 500: {"description": "Failed to Update Pet Profile"}}) 
 async def update_pet_profile(id: int, reqBody: basemodels.UpdatePetBody):  
   pet = await models.Pet.filter(id=id).first()
 
@@ -235,7 +235,7 @@ async def update_pet_profile(id: int, reqBody: basemodels.UpdatePetBody):
   else:
     raise HTTPException(status_code=500, detail=f'Failed to Update Pet Profile')
   
-@app.get("/appuser/{appuser_id}/pet", status_code=200) 
+@app.get("/appuser/{appuser_id}/pet", status_code=200, responses={404: {"description": "User Does Not Exist"}}) 
 async def get_all_pets_for_user(appuser_id: int): 
   appuser = await models.Appuser.filter(id=appuser_id).first()
 
@@ -248,7 +248,7 @@ async def get_all_pets_for_user(appuser_id: int):
   else:
     return []
   
-@app.get("/pet/{id}", status_code=200) 
+@app.get("/pet/{id}", status_code=200, responses={404: {"description": "Pet Not Found"}}) 
 async def get_pet_by_id(id: int): 
   pet = await models.Pet.filter(id=id).first()
 
@@ -266,7 +266,7 @@ async def get_all_pets():
   else:
     return []
   
-@app.delete("/pet/{id}", status_code=200) 
+@app.delete("/pet/{id}", status_code=200, responses={500: {"description": "Failed to Delete Pet Profile"}}) 
 async def delete_pet_by_id(id: int): 
   try:
     pet = await models.Pet.get(id=id)
@@ -317,7 +317,7 @@ async def get_all_matching_sitters(prefecture: str, city_ward: str | None = None
       else:
         return []
 
-@app.get("/appuser/{id}/inquiry", status_code=200) 
+@app.get("/appuser/{id}/inquiry", status_code=200, responses={403: {"description": "Not authorized to view these inquiries."}}) 
 async def get_all_relevant_inquiries_for_user(id: int, is_sitter: bool, decoded_token: dict = Depends(verify_firebase_token)):
   appuser = await models.Appuser.filter(id=id).first()
   # Authorization: Only the user themselves can access their related inquiries 
@@ -337,7 +337,7 @@ async def get_all_relevant_inquiries_for_user(id: int, is_sitter: bool, decoded_
       else:
         return []
 
-@app.get("/inquiry/{id}", status_code=200) 
+@app.get("/inquiry/{id}", status_code=200, responses={404: {"description": "Inquiry Not Found"}}) 
 async def get_inquiry_by_id(id: int):     
   inquiry = await models.Inquiry.filter(id=id).first()
   if inquiry:
@@ -345,7 +345,7 @@ async def get_inquiry_by_id(id: int):
   else:
     raise HTTPException(status_code=404, detail=f'Inquiry Not Found')
 
-@app.post("/inquiry", status_code=201) 
+@app.post("/inquiry", status_code=201, responses={404: {"description": "Failed to Add Inquiry"}}) 
 async def create_inquiry(reqBody: basemodels.CreateInquiryBody):
   try:
     inquiry = await models.Inquiry.create(**reqBody.dict())     
@@ -353,7 +353,7 @@ async def create_inquiry(reqBody: basemodels.CreateInquiryBody):
   except Exception as e:
     raise HTTPException(status_code=500, detail=f'Failed to Add Inquiry: {str(e)}')
 
-@app.patch("/inquiry/{id}", status_code=200) 
+@app.patch("/inquiry/{id}", status_code=200, responses={400: {"description": "Invalid Status Received / Inquiry Already Finalized"}, 404: {"description": "Inquiry Not Found"}}) 
 async def update_inquiry_status(id: int, reqBody: basemodels.UpdateInquiryStatusBody):  
   if reqBody.inquiry_status not in ["approved", "rejected"]:
     raise HTTPException(status_code=400, detail=f'Invalid Status Received')
@@ -371,7 +371,7 @@ async def update_inquiry_status(id: int, reqBody: basemodels.UpdateInquiryStatus
   else:
     raise HTTPException(status_code=404, detail=f'Inquiry Not Found')
 
-@app.put("/inquiry/{id}", status_code=200) 
+@app.put("/inquiry/{id}", status_code=200, responses={404: {"description": "Inquiry Not Found"}}) 
 async def update_inquiry_content(id: int, reqBody: basemodels.UpdateInquiryContentBody):  
 
   inquiry = await models.Inquiry.filter(id=id).first()
@@ -383,7 +383,7 @@ async def update_inquiry_content(id: int, reqBody: basemodels.UpdateInquiryConte
   else:
     raise HTTPException(status_code=404, detail=f'Inquiry Not Found')
   
-@app.post("/inquiry/{id}/message", status_code=201) 
+@app.post("/inquiry/{id}/message", status_code=201, responses={500: {"description": "Failed to Add Message"}}) 
 async def create_message(id: int, reqBody: basemodels.CreateMessageBody):
   try:
     message = await models.Message.create(inquiry_id=id, **reqBody.dict())
@@ -399,7 +399,7 @@ async def get_all_messages_from_inquiry(id: int):
   else:
     return []
   
-@app.get("/inquiry/{id}/pet", status_code=200) 
+@app.get("/inquiry/{id}/pet", status_code=200, responses={404: {"description": "Inquiry Does Not Exist"}}) 
 async def get_all_pets_from_inquiry(id: int):
   inquiry = await models.Inquiry.filter(id=id).first()
 
@@ -433,7 +433,7 @@ async def get_all_pets_from_inquiry(id: int):
   else:
     raise HTTPException(status_code=404, detail=f'Inquiry Does Not Exist')
       
-@app.post("/appuser/{id}/availability", status_code=201) 
+@app.post("/appuser/{id}/availability", status_code=201, responses={500: {"description": "Failed to Add Availability"}}) 
 async def create_availabilities(id: int, reqBody: List[basemodels.CreateAvailabilityBody]):
   responseArray = []
   
@@ -446,7 +446,7 @@ async def create_availabilities(id: int, reqBody: List[basemodels.CreateAvailabi
     
   return responseArray
   
-@app.delete("/availability/{id}", status_code=200)
+@app.delete("/availability/{id}", status_code=200, responses={500: {"description": "Failed to Delete Availability"}})
 async def delete_availability(id: int):
   try:
     availability = await models.Availability.get(id=id)
@@ -455,7 +455,7 @@ async def delete_availability(id: int):
   except Exception as e:
     raise HTTPException(status_code=500, detail=f'Failed to Delete Availability: {str(e)}')
 
-@app.get("/appuser/{id}/availability", status_code=200)
+@app.get("/appuser/{id}/availability", status_code=200, responses={400: {"description": "The User is Not a Sitter"}})
 async def get_all_availabilities_for_sitter(id: int):
   appuser = await models.Appuser.get(id=id)
 
@@ -468,7 +468,7 @@ async def get_all_availabilities_for_sitter(id: int):
   else:
     raise HTTPException(status_code=400, detail=f'The User is Not a Sitter')
   
-@app.post("/appuser/{id}/review", status_code=201) 
+@app.post("/appuser/{id}/review", status_code=201, responses={400: {"description": "recipient_appuser_type should be about 'owner' or about 'sitter'"}, 404: {"description": "User(s) Not Found"}, 500: {"description": "Failed to Add Review"}}) 
 async def create_review(id: int, reqBody: basemodels.CreateReviewBody):
   if reqBody.recipient_appuser_type not in ["sitter", "owner"]:
     raise HTTPException(status_code=400, detail=f'recipient_appuser_type should be about "owner" or about "sitter"')
@@ -508,7 +508,7 @@ async def create_review(id: int, reqBody: basemodels.CreateReviewBody):
   except Exception as e:
     raise HTTPException(status_code=500, detail=f'Failed to Add Review: {str(e)}')
   
-@app.get("/appuser/{id}/review", status_code=200) 
+@app.get("/appuser/{id}/review", status_code=200, responses={404: {"description": "User Not Found"}}) 
 async def get_all_reviews_for_user(id: int, recipient_appuser_type: str | None = None):
   appuser = await models.Appuser.get(id=id)
 

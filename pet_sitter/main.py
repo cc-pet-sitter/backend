@@ -75,7 +75,7 @@ async def verify_firebase_token(request: Request):
 
 @app.get("/") 
 async def main_route():     
-  return "Welcome to PetSitter!"
+  return "Welcome to Mugi! むぎへようこそ！"
 
 @app.post("/signup", status_code=201, responses={403: {"description": "Email mismatch."}, 401: {"description": "User already exists in the database."}, 500: {"description": "Failed to Add User"}}) 
 async def sign_user_up(reqBody: basemodels.SignUpBody, decoded_token: dict = Depends(verify_firebase_token)):  
@@ -103,13 +103,20 @@ def check_logged_in(decoded_token: dict):
     email = decoded_token.get('email')
     uid = decoded_token.get('uid')
     
-    if not email or not uid:
+    if not email or not uid: # no email or UID found in the token
         raise HTTPException(status_code=401, detail="Must Be Logged In")
     
-def check_authorized(decoded_token: dict, storedFirebaseID):
-  if decoded_token['uid'] != storedFirebaseID:
+def check_is_authorized(decoded_token: dict, requestedUserFirebaseID):
+  if decoded_token['uid'] != requestedUserFirebaseID: # the calling user is not the same as the user whose properties are being targeted by the action
     raise HTTPException(status_code=403, detail="User Not Authorized")
 
+async def check_is_authorized_for_inquiry(decoded_token: dict, ownerID, sitterID):
+  uid = decoded_token.get('uid')
+  appuser = await models.Appuser.filter(firebase_user_id=uid).first()
+
+  if appuser.id != ownerID and appuser.id != sitterID: #the calling user is neither the inquiry's owner_appuser nor the inquiry's sitter_appuser
+    raise HTTPException(status_code=403, detail="User Not Authorized")
+    
 @app.post("/login", status_code=200, responses={401: {"description": "Invalid token data."}, 404: {"description": "User Not Found"}}) 
 async def log_user_in(decoded_token: dict = Depends(verify_firebase_token)):  
     # Extract email and uid from the decoded token
@@ -148,7 +155,7 @@ async def update_appuser_info(id: int, appuserReqBody: basemodels.UpdateAppuserB
   if not appuser:
     raise HTTPException(status_code=404, detail='Appuser Not Found')
   
-  check_authorized(decoded_token, appuser.firebase_user_id)
+  check_is_authorized(decoded_token, appuser.firebase_user_id)
 
   await appuser.update_from_dict(appuserReqBody.dict(exclude_unset=True))
   await appuser.save()
@@ -169,7 +176,7 @@ async def set_user_info(appuser_id: int, sitterReqBody: basemodels.SetSitterBody
   sitter = await models.Sitter.filter(appuser_id=appuser_id).first()
 
   appuser = await models.Appuser.filter(id=appuser_id).first()
-  check_authorized(decoded_token, appuser.firebase_user_id)
+  check_is_authorized(decoded_token, appuser.firebase_user_id)
 
   if sitter: # the sitter already exists, so update it
     await sitter.update_from_dict(sitterReqBody.dict(exclude_unset=True))
@@ -223,7 +230,7 @@ async def create_pet_profile(appuser_id: int, reqBody: basemodels.CreatePetBody,
   if not appuser:
     raise HTTPException(status_code=404, detail=f'User Does Not Exist')
   
-  check_authorized(decoded_token, appuser.firebase_user_id)
+  check_is_authorized(decoded_token, appuser.firebase_user_id)
   validate_pet_fields(reqBody.type_of_animal, reqBody.weight, reqBody.gender)
 
   newPet = await models.Pet.create(appuser_id=appuser_id, **reqBody.dict(exclude_unset=True))
@@ -241,7 +248,7 @@ async def update_pet_profile(id: int, reqBody: basemodels.UpdatePetBody, decoded
     raise HTTPException(status_code=404, detail=f'Pet Not Found')
   
   appuser = await models.Appuser.filter(id=pet.appuser_id).first()
-  check_authorized(decoded_token, appuser.firebase_user_id)
+  check_is_authorized(decoded_token, appuser.firebase_user_id)
 
   validate_pet_fields(reqBody.type_of_animal, reqBody.weight, reqBody.gender)
 
@@ -262,7 +269,7 @@ async def get_all_pets_for_user(appuser_id: int, decoded_token: dict = Depends(v
   if not appuser:
     raise HTTPException(status_code=404, detail=f'User Does Not Exist')
   
-  check_authorized(decoded_token, appuser.firebase_user_id)
+  check_is_authorized(decoded_token, appuser.firebase_user_id)
 
   userPetsArray = await models.Pet.filter(appuser_id=appuser_id)
   if userPetsArray:
@@ -293,7 +300,7 @@ async def delete_pet_by_id(id: int, decoded_token: dict = Depends(verify_firebas
   try:
     pet = await models.Pet.get(id=id)
     appuser = await models.Appuser.get(id=pet.appuser_id)
-    check_authorized(decoded_token, appuser.firebase_user_id)
+    check_is_authorized(decoded_token, appuser.firebase_user_id)
     await pet.delete()
     return f'Pet profile #{id} has been deleted'
   except Exception as e:
@@ -345,7 +352,7 @@ async def get_all_matching_sitters(prefecture: str, city_ward: str | None = None
 async def get_all_relevant_inquiries_for_user(id: int, is_sitter: bool, decoded_token: dict = Depends(verify_firebase_token)):
   appuser = await models.Appuser.filter(id=id).first()
 
-  check_authorized(decoded_token, appuser.firebase_user_id)
+  check_is_authorized(decoded_token, appuser.firebase_user_id)
 
   if is_sitter:
       sitterInquiryArray = await models.Inquiry.filter(sitter_appuser_id=id)
@@ -360,10 +367,11 @@ async def get_all_relevant_inquiries_for_user(id: int, is_sitter: bool, decoded_
       else:
         return []
 
-@app.get("/inquiry/{id}", status_code=200, responses={404: {"description": "Inquiry Not Found"}}) 
-async def get_inquiry_by_id(id: int):     
+@app.get("/inquiry/{id}", status_code=200, responses={403: {"description": "User Not Authorized"}, 404: {"description": "Inquiry Not Found"}}) 
+async def get_inquiry_by_id(id: int, decoded_token: dict = Depends(verify_firebase_token)):     
   inquiry = await models.Inquiry.filter(id=id).first()
   if inquiry:
+    check_is_authorized_for_inquiry(decoded_token, inquiry.owner_appuser_id, inquiry.sitter_appuser_id)
     return inquiry
   else:
     raise HTTPException(status_code=404, detail=f'Inquiry Not Found')
@@ -371,7 +379,7 @@ async def get_inquiry_by_id(id: int):
 @app.post("/inquiry", status_code=201, responses={403: {"description": "User Not Authorized"}, 404: {"description": "Failed to Add Inquiry"}}) 
 async def create_inquiry(reqBody: basemodels.CreateInquiryBody, decoded_token: dict = Depends(verify_firebase_token)):
   appuser = await models.Appuser.get(id=reqBody.owner_appuser_id)
-  check_authorized(decoded_token, appuser.firebase_user_id)
+  check_is_authorized(decoded_token, appuser.firebase_user_id)
   try:
     inquiry = await models.Inquiry.create(**reqBody.dict())     
     return inquiry
@@ -381,7 +389,7 @@ async def create_inquiry(reqBody: basemodels.CreateInquiryBody, decoded_token: d
 @app.patch("/inquiry/{id}", status_code=200, responses={403: {"description": "User Not Authorized"}, 400: {"description": "Invalid Status Received or Inquiry Already Finalized"}, 404: {"description": "Inquiry Not Found"}}) 
 async def update_inquiry_status(id: int, reqBody: basemodels.UpdateInquiryStatusBody, decoded_token: dict = Depends(verify_firebase_token)):  
   appuser = await models.Appuser.get(id=reqBody.owner_appuser_id)
-  check_authorized(decoded_token, appuser.firebase_user_id)
+  check_is_authorized(decoded_token, appuser.firebase_user_id)
 
   if reqBody.inquiry_status not in ["approved", "rejected"]:
     raise HTTPException(status_code=400, detail=f'Invalid Status Received')
@@ -402,7 +410,7 @@ async def update_inquiry_status(id: int, reqBody: basemodels.UpdateInquiryStatus
 @app.put("/inquiry/{id}", status_code=200, responses={403: {"description": "User Not Authorized"}, 404: {"description": "Inquiry Not Found"}}) 
 async def update_inquiry_content(id: int, reqBody: basemodels.UpdateInquiryContentBody, decoded_token: dict = Depends(verify_firebase_token)):  
   appuser = await models.Appuser.get(id=reqBody.owner_appuser_id)
-  check_authorized(decoded_token, appuser.firebase_user_id)
+  check_is_authorized(decoded_token, appuser.firebase_user_id)
 
   inquiry = await models.Inquiry.filter(id=id).first()
   if inquiry:
@@ -413,27 +421,38 @@ async def update_inquiry_content(id: int, reqBody: basemodels.UpdateInquiryConte
   else:
     raise HTTPException(status_code=404, detail=f'Inquiry Not Found')
   
-@app.post("/inquiry/{id}/message", status_code=201, responses={500: {"description": "Failed to Add Message"}}) 
-async def create_message(id: int, reqBody: basemodels.CreateMessageBody):
+@app.post("/inquiry/{id}/message", status_code=201, responses={403: {"description": "User Not Authorized"}, 500: {"description": "Failed to Add Message"}}) 
+async def create_message(id: int, reqBody: basemodels.CreateMessageBody, decoded_token: dict = Depends(verify_firebase_token)):
   try:
+    inquiry = await models.Inquiry.filter(id=id).first()
+    check_is_authorized_for_inquiry(decoded_token, inquiry.owner_appuser_id, inquiry.sitter_appuser_id)
     message = await models.Message.create(inquiry_id=id, **reqBody.dict())
     return message
   except Exception as e:
     raise HTTPException(status_code=500, detail=f'Failed to Add Message: {str(e)}')
   
-@app.get("/inquiry/{id}/message", status_code=200) 
-async def get_all_messages_from_inquiry(id: int):
+@app.get("/inquiry/{id}/message", status_code=200, responses={403: {"description": "User Not Authorized"}, 404: {"description": "Inquiry Does Not Exist"}}) 
+async def get_all_messages_from_inquiry(id: int, decoded_token: dict = Depends(verify_firebase_token)):
+  inquiry = await models.Inquiry.filter(id=id).first()
+
+  if not inquiry:
+    raise HTTPException(status_code=404, detail=f'Inquiry Does Not Exist')
+
+  check_is_authorized_for_inquiry(decoded_token, inquiry.owner_appuser_id, inquiry.sitter_appuser_id)
+
   inquiryMessagesArray = await models.Message.filter(inquiry_id=id)
   if inquiryMessagesArray:
     return inquiryMessagesArray
   else:
     return []
   
-@app.get("/inquiry/{id}/pet", status_code=200, responses={404: {"description": "Inquiry Does Not Exist"}}) 
-async def get_all_pets_from_inquiry(id: int):
+@app.get("/inquiry/{id}/pet", status_code=200, responses={403: {"description": "User Not Authorized"}, 404: {"description": "Inquiry Does Not Exist"}}) 
+async def get_all_pets_from_inquiry(id: int, decoded_token: dict = Depends(verify_firebase_token)):
   inquiry = await models.Inquiry.filter(id=id).first()
 
   if inquiry:
+    check_is_authorized_for_inquiry(decoded_token, inquiry.owner_appuser_id, inquiry.sitter_appuser_id)
+
     petsCSVStr = inquiry.pet_id_list
 
     if petsCSVStr:
@@ -466,7 +485,7 @@ async def get_all_pets_from_inquiry(id: int):
 @app.post("/appuser/{id}/availability", status_code=201, responses={403: {"description": "User Not Authorized"}, 500: {"description": "Failed to Add Availability"}}) 
 async def create_availabilities(id: int, reqBody: List[basemodels.CreateAvailabilityBody], decoded_token: dict = Depends(verify_firebase_token)):
   appuser = await models.Appuser.filter(id=id).first()
-  check_authorized(decoded_token, appuser.firebase_user_id)
+  check_is_authorized(decoded_token, appuser.firebase_user_id)
 
   responseArray = []
   
@@ -484,7 +503,7 @@ async def delete_availability(id: int, decoded_token: dict = Depends(verify_fire
   try:
     availability = await models.Availability.get(id=id)
     appuser = await models.Appuser.filter(id=availability.appuser_id).first()
-    check_authorized(decoded_token, appuser.firebase_user_id)
+    check_is_authorized(decoded_token, appuser.firebase_user_id)
     await availability.delete()
     return f'Availabilty #{id} has been deleted'
   except Exception as e:

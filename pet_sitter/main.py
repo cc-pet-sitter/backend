@@ -490,11 +490,13 @@ async def create_availabilities(id: int, reqBody: List[basemodels.CreateAvailabi
   responseArray = []
   
   for i in range(len(reqBody)):
-    try:
-      availability = await models.Availability.create(appuser_id=id, **reqBody[i].dict())
-      responseArray.append(availability)
-    except Exception as e:
-      raise HTTPException(status_code=500, detail=f'Failed to Add Availability: {str(e)}')
+    availability = await models.Availability.filter(appuser_id=id, available_date=reqBody[i].available_date).first()
+    if not availability:
+      try:
+        newAvailability = await models.Availability.create(appuser_id=id, **reqBody[i].dict())
+        responseArray.append(newAvailability)
+      except Exception as e:
+        raise HTTPException(status_code=500, detail=f'Failed to Add Availability: {str(e)}')
     
   return responseArray
   

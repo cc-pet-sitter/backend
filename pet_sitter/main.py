@@ -271,7 +271,7 @@ async def get_all_pets_for_user(appuser_id: int, decoded_token: dict = Depends(v
   
   check_is_authorized(decoded_token, appuser.firebase_user_id)
 
-  userPetsArray = await models.Pet.filter(appuser_id=appuser_id).order_by('id') # to stabalize display order when pet profiles are updated
+  userPetsArray = await models.Pet.filter(appuser_id=appuser_id).order_by('id') # to stabilize display order when pet profiles are updated
   if userPetsArray:
     return userPetsArray
   else:

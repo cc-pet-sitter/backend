@@ -123,8 +123,8 @@ async def create_pet(appuser: int):
     known_allergies="None",
     medications="None",
     special_needs="None",
-    profile_picture_src=fake.random_element(elements=photos),
-    pet_bio_picture_src_list=f'{fake.random_element(elements=photos)},{fake.random_element(elements=photos)},{fake.random_element(elements=photos)}',
+    profile_picture_src=fake.random_element(elements=pets[randomAnimal]),
+    pet_bio_picture_src_list=f'{fake.random_element(elements=yard)},{fake.random_element(elements=exterior)},{fake.random_element(elements=yard)}',
     appuser=appuser,
     profile_bio=fake.random_element(elements=pet_biographies),
   )
@@ -139,18 +139,138 @@ async def get_all_pets_for_user(appuser_id: int):
   else:
     return []
 
-photos = [
-   "https://live.staticflickr.com/62/207176169_60738224b6_c.jpg",
-   "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQmkRHRtkrvooPGjWA-GsLDUOyy8hV7F8fRQA&s",
-   "https://d3544la1u8djza.cloudfront.net/APHI/Blog/2023/October/DogSitter-Hero.jpg",
-   "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ7fEaFQ7CC3TK-PdJ6d0z5N_wTc1BQ-BLGVw&s",
-   "https://cdn.sentidoanimal.es/wp-content/uploads/2024/05/cabecera_Dogsitter_pk.jpg",
-   "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTW4r9cqwOBK4ObEJqQSj3BV2JYkwyZJCQhOw&s",
-   "https://2pawsupinc.com/wp-content/uploads/2018/05/why-hire-a-professional-pet-sitter.jpg",
-   "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS7IWtIwnOwCcE2uGK82fdn303zm2foXLhxoA&s",
-   "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS7IWtIwnOwCcE2uGK82fdn303zm2foXLhxoA&s",
-   "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTW4r9cqwOBK4ObEJqQSj3BV2JYkwyZJCQhOw&s"
+people = [
+	"https://live.staticflickr.com/62/207176169_60738224b6_c.jpg",
+	"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQmkRHRtkrvooPGjWA-GsLDUOyy8hV7F8fRQA&s",
+	"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ7fEaFQ7CC3TK-PdJ6d0z5N_wTc1BQ-BLGVw&s",
+	"https://2pawsupinc.com/wp-content/uploads/2018/05/why-hire-a-professional-pet-sitter.jpg",
+	"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS7IWtIwnOwCcE2uGK82fdn303zm2foXLhxoA&s",
+	"https://images.pexels.com/photos/29641277/pexels-photo-29641277/free-photo-of-man-embracing-labrador-retriever-outdoors.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+	"https://images.pexels.com/photos/29583724/pexels-photo-29583724/free-photo-of-joyful-indian-girl-hugging-white-pomeranian.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+	"https://images.pexels.com/photos/7210491/pexels-photo-7210491.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+	"https://images.pexels.com/photos/9354547/pexels-photo-9354547.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+	"https://images.pexels.com/photos/6530743/pexels-photo-6530743.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+	"https://images.pexels.com/photos/5482207/pexels-photo-5482207.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+	"https://images.pexels.com/photos/8489019/pexels-photo-8489019.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+	"https://images.pexels.com/photos/5763553/pexels-photo-5763553.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+	"https://images.pexels.com/photos/7481815/pexels-photo-7481815.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+	"https://images.pexels.com/photos/12598764/pexels-photo-12598764.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+	"https://images.pexels.com/photos/8359637/pexels-photo-8359637.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+	"https://images.pexels.com/photos/17718338/pexels-photo-17718338/free-photo-of-man-and-woman-and-dog.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+	"https://images.pexels.com/photos/10416690/pexels-photo-10416690.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+	"https://images.pexels.com/photos/29632969/pexels-photo-29632969/free-photo-of-autumn-hiking-adventure-in-trondelag-norway.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1"
 ]
+
+interior = [
+	"https://images.pexels.com/photos/1080721/pexels-photo-1080721.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+	"https://images.pexels.com/photos/1571460/pexels-photo-1571460.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+	"https://images.pexels.com/photos/1743227/pexels-photo-1743227.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+	"https://images.pexels.com/photos/2724748/pexels-photo-2724748.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+	"https://images.pexels.com/photos/2227832/pexels-photo-2227832.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+	"https://images.pexels.com/photos/2251247/pexels-photo-2251247.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+	"https://images.pexels.com/photos/3797991/pexels-photo-3797991.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+	"https://images.pexels.com/photos/2343468/pexels-photo-2343468.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+	"https://images.pexels.com/photos/276724/pexels-photo-276724.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+	"https://images.pexels.com/photos/3209045/pexels-photo-3209045.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+	"https://images.pexels.com/photos/280232/pexels-photo-280232.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+	"https://images.pexels.com/photos/280239/pexels-photo-280239.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1"
+]
+
+exterior = [
+	"https://images.pexels.com/photos/280222/pexels-photo-280222.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+	"https://images.pexels.com/photos/259588/pexels-photo-259588.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+	"https://images.pexels.com/photos/209296/pexels-photo-209296.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+	"https://images.pexels.com/photos/460695/pexels-photo-460695.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+	"https://images.pexels.com/photos/210617/pexels-photo-210617.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+	"https://images.pexels.com/photos/786944/pexels-photo-786944.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+	"https://images.pexels.com/photos/2360673/pexels-photo-2360673.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1"
+]
+
+yard = [
+	"https://images.pexels.com/photos/13975/pexels-photo-13975.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+	"https://images.pexels.com/photos/7283/garden.jpg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+	"https://images.pexels.com/photos/59321/pexels-photo-59321.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+	"https://images.pexels.com/photos/198289/pexels-photo-198289.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+	"https://images.pexels.com/photos/1685164/pexels-photo-1685164.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1"
+]
+
+pets = {
+  "dog" : [
+    "https://cdn.sentidoanimal.es/wp-content/uploads/2024/05/cabecera_Dogsitter_pk.jpg",
+    "https://d3544la1u8djza.cloudfront.net/APHI/Blog/2023/October/DogSitter-Hero.jpg",
+    "https://images.pexels.com/photos/2607544/pexels-photo-2607544.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/1805164/pexels-photo-1805164.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/1851164/pexels-photo-1851164.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/1458916/pexels-photo-1458916.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/1619690/pexels-photo-1619690.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/1198802/pexels-photo-1198802.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/160846/french-bulldog-summer-smile-joy-160846.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/5257587/pexels-photo-5257587.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/1564506/pexels-photo-1564506.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/485294/pexels-photo-485294.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/1629781/pexels-photo-1629781.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/1954515/pexels-photo-1954515.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/3196887/pexels-photo-3196887.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1"
+  ],
+  "cat" : [
+    "https://images.pexels.com/photos/45201/kitty-cat-kitten-pet-45201.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/1643457/pexels-photo-1643457.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/2061057/pexels-photo-2061057.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/127028/pexels-photo-127028.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/1183434/pexels-photo-1183434.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/923360/pexels-photo-923360.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/1314550/pexels-photo-1314550.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/1741205/pexels-photo-1741205.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/69932/tabby-cat-close-up-portrait-69932.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/257532/pexels-photo-257532.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/1472999/pexels-photo-1472999.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/248280/pexels-photo-248280.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/982865/pexels-photo-982865.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1"
+  ],
+  "rabbit" : [
+    "https://images.pexels.com/photos/2883510/pexels-photo-2883510.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/2061754/pexels-photo-2061754.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/6897439/pexels-photo-6897439.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/6897433/pexels-photo-6897433.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/4588065/pexels-photo-4588065.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/4588056/pexels-photo-4588056.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/3820509/pexels-photo-3820509.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/4588455/pexels-photo-4588455.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/4580783/pexels-photo-4580783.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/7121831/pexels-photo-7121831.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/6846044/pexels-photo-6846044.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/16042051/pexels-photo-16042051/free-photo-of-white-bunnies-in-a-wooden-hutch.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/7121825/pexels-photo-7121825.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1"
+  ],
+  "bird" : [
+    "https://images.pexels.com/photos/46166/robin-european-robin-erithacus-rubecula-red-46166.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/1526402/pexels-photo-1526402.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/5651223/pexels-photo-5651223.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/1526410/pexels-photo-1526410.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/927500/pexels-photo-927500.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/1774879/pexels-photo-1774879.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/1040400/pexels-photo-1040400.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/29595854/pexels-photo-29595854/free-photo-of-vibrant-peach-faced-lovebird-on-hand.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/29595853/pexels-photo-29595853/free-photo-of-pastel-blue-lovebird-perched-on-hand.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/162140/duckling-birds-yellow-fluffy-162140.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/1618424/pexels-photo-1618424.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/5103723/pexels-photo-5103723.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1"
+  ],
+  "fish" : [
+    "https://images.pexels.com/photos/5966770/pexels-photo-5966770.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/7188173/pexels-photo-7188173.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/1335971/pexels-photo-1335971.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/2156311/pexels-photo-2156311.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/3133396/pexels-photo-3133396.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/78790/perch-cichlid-discus-cichlid-freshwater-fish-78790.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/2156316/pexels-photo-2156316.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/128756/pexels-photo-128756.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/1677116/pexels-photo-1677116.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/3905045/pexels-photo-3905045.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/1145274/pexels-photo-1145274.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+    "https://images.pexels.com/photos/12304385/pexels-photo-12304385.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1"
+  ]
+}
 
 bios = [
   'Passionate animal lover, always excited to care for pets.',
@@ -273,11 +393,11 @@ async def seed_db():
         firebase_user_id=fake.uuid4(),
         average_user_rating=randint(1,5),
         user_profile_bio=f'{fake.random_element(elements=bios)}',
-        user_bio_picture_src_list=f'{fake.random_element(elements=photos)},{fake.random_element(elements=photos)},{fake.random_element(elements=photos)}',
+        user_bio_picture_src_list=f'{fake.random_element(elements=interior)},{fake.random_element(elements=exterior)},{fake.random_element(elements=yard)}',
         account_created=fake.date_time_this_year(True, False),
         last_updated=fake.date_time_this_year(True, False),
         last_login=fake.date_time_this_year(True, False),
-        profile_picture_src=fake.random_element(elements=photos),
+        profile_picture_src=fake.random_element(elements=people),
         prefecture=prefecture,
         city_ward=fake.random_element(elements=japan_prefectures_cities[prefecture]),
         street_address=fake.street_address(),
@@ -294,7 +414,7 @@ async def seed_db():
       if appuser.is_sitter:
           await models.Sitter.create(
               sitter_profile_bio=f'{fake.random_element(elements=bios)}',
-              sitter_bio_picture_src_list=f'{fake.random_element(elements=photos)},{fake.random_element(elements=photos)},{fake.random_element(elements=photos)}',
+              sitter_bio_picture_src_list=f'{fake.random_element(elements=interior)},{fake.random_element(elements=exterior)},{fake.random_element(elements=yard)}',
               sitter_house_ok=fake.boolean(),
               owner_house_ok=fake.boolean(),
               visit_ok=fake.boolean(),

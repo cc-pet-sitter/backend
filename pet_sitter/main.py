@@ -355,13 +355,13 @@ async def get_all_relevant_inquiries_for_user(id: int, is_sitter: bool, decoded_
   check_is_authorized(decoded_token, appuser.firebase_user_id)
 
   if is_sitter:
-      sitterInquiryArray = await models.Inquiry.filter(sitter_appuser_id=id)
+      sitterInquiryArray = await models.Inquiry.filter(sitter_appuser_id=id).order_by('id')
       if sitterInquiryArray:
         return sitterInquiryArray
       else:
         return []
   else:
-      ownerInquiryArray = await models.Inquiry.filter(owner_appuser_id=id)
+      ownerInquiryArray = await models.Inquiry.filter(owner_appuser_id=id).order_by('id')
       if ownerInquiryArray:
         return ownerInquiryArray
       else:
@@ -388,14 +388,14 @@ async def create_inquiry(reqBody: basemodels.CreateInquiryBody, decoded_token: d
 
 @app.patch("/inquiry/{id}", status_code=200, responses={403: {"description": "User Not Authorized"}, 400: {"description": "Invalid Status Received or Inquiry Already Finalized"}, 404: {"description": "Inquiry Not Found"}}) 
 async def update_inquiry_status(id: int, reqBody: basemodels.UpdateInquiryStatusBody, decoded_token: dict = Depends(verify_firebase_token)):  
-  appuser = await models.Appuser.get(id=reqBody.owner_appuser_id)
-  check_is_authorized(decoded_token, appuser.firebase_user_id)
-
   if reqBody.inquiry_status not in ["approved", "rejected"]:
     raise HTTPException(status_code=400, detail=f'Invalid Status Received')
 
   inquiry = await models.Inquiry.filter(id=id).first()
+
   if inquiry:
+    await check_is_authorized_for_inquiry(decoded_token, inquiry.owner_appuser_id, inquiry.sitter_appuser_id)
+
     if inquiry.inquiry_status not in [models.InquiryStatus.REQUESTED]:
        raise HTTPException(status_code=400, detail=f'Inquiry Already Finalized')
 
@@ -409,11 +409,10 @@ async def update_inquiry_status(id: int, reqBody: basemodels.UpdateInquiryStatus
 
 @app.put("/inquiry/{id}", status_code=200, responses={403: {"description": "User Not Authorized"}, 404: {"description": "Inquiry Not Found"}}) 
 async def update_inquiry_content(id: int, reqBody: basemodels.UpdateInquiryContentBody, decoded_token: dict = Depends(verify_firebase_token)):  
-  appuser = await models.Appuser.get(id=reqBody.owner_appuser_id)
-  check_is_authorized(decoded_token, appuser.firebase_user_id)
-
   inquiry = await models.Inquiry.filter(id=id).first()
+
   if inquiry:
+    await check_is_authorized_for_inquiry(decoded_token, inquiry.owner_appuser_id, inquiry.sitter_appuser_id)
     await inquiry.update_from_dict(reqBody.dict(exclude_unset=True))
     await inquiry.save()
     updatedInquiry = await models.Inquiry.get(id=id)

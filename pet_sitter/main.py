@@ -371,7 +371,7 @@ async def get_all_relevant_inquiries_for_user(id: int, is_sitter: bool, decoded_
 async def get_inquiry_by_id(id: int, decoded_token: dict = Depends(verify_firebase_token)):     
   inquiry = await models.Inquiry.filter(id=id).first()
   if inquiry:
-    check_is_authorized_for_inquiry(decoded_token, inquiry.owner_appuser_id, inquiry.sitter_appuser_id)
+    await check_is_authorized_for_inquiry(decoded_token, inquiry.owner_appuser_id, inquiry.sitter_appuser_id)
     return inquiry
   else:
     raise HTTPException(status_code=404, detail=f'Inquiry Not Found')
@@ -425,7 +425,7 @@ async def update_inquiry_content(id: int, reqBody: basemodels.UpdateInquiryConte
 async def create_message(id: int, reqBody: basemodels.CreateMessageBody, decoded_token: dict = Depends(verify_firebase_token)):
   try:
     inquiry = await models.Inquiry.filter(id=id).first()
-    check_is_authorized_for_inquiry(decoded_token, inquiry.owner_appuser_id, inquiry.sitter_appuser_id)
+    await check_is_authorized_for_inquiry(decoded_token, inquiry.owner_appuser_id, inquiry.sitter_appuser_id)
     message = await models.Message.create(inquiry_id=id, **reqBody.dict())
     return message
   except Exception as e:
@@ -438,7 +438,7 @@ async def get_all_messages_from_inquiry(id: int, decoded_token: dict = Depends(v
   if not inquiry:
     raise HTTPException(status_code=404, detail=f'Inquiry Does Not Exist')
 
-  check_is_authorized_for_inquiry(decoded_token, inquiry.owner_appuser_id, inquiry.sitter_appuser_id)
+  await check_is_authorized_for_inquiry(decoded_token, inquiry.owner_appuser_id, inquiry.sitter_appuser_id)
 
   inquiryMessagesArray = await models.Message.filter(inquiry_id=id)
   if inquiryMessagesArray:
@@ -451,7 +451,7 @@ async def get_all_pets_from_inquiry(id: int, decoded_token: dict = Depends(verif
   inquiry = await models.Inquiry.filter(id=id).first()
 
   if inquiry:
-    check_is_authorized_for_inquiry(decoded_token, inquiry.owner_appuser_id, inquiry.sitter_appuser_id)
+    await check_is_authorized_for_inquiry(decoded_token, inquiry.owner_appuser_id, inquiry.sitter_appuser_id)
 
     petsCSVStr = inquiry.pet_id_list
 

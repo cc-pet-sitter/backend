@@ -262,14 +262,22 @@ async def update_pet_profile(id: int, reqBody: basemodels.UpdatePetBody, decoded
   else:
     raise HTTPException(status_code=500, detail=f'Failed to Update Pet Profile')
   
-@app.get("/appuser/{appuser_id}/pet", status_code=200, responses={403: {"description": "User Not Authorized"}, 404: {"description": "User Does Not Exist"}}) 
-async def get_all_pets_for_user(appuser_id: int, decoded_token: dict = Depends(verify_firebase_token)): 
+@app.get("/appuser/{appuser_id}/pet", status_code=200, responses={400: {"description": "Invalid Request"}, 403: {"description": "User Not Authorized"}, 404: {"description": "User Does Not Exist"}}) 
+async def get_all_pets_for_user(appuser_id: int, decoded_token: dict = Depends(verify_firebase_token), inquiry_id: int | None = None): 
   appuser = await models.Appuser.filter(id=appuser_id).first()
 
   if not appuser:
     raise HTTPException(status_code=404, detail=f'User Does Not Exist')
   
-  check_is_authorized(decoded_token, appuser.firebase_user_id)
+  if not inquiry_id:
+    check_is_authorized(decoded_token, appuser.firebase_user_id)
+  else: # for when a sitter needs to access an owner's pet data on their shared inquiry
+    inquiry = await models.Inquiry.filter(id=inquiry_id).first()
+
+    if not inquiry or inquiry.owner_appuser_id != appuser_id: # ensure that the owner data being requested matches the owner of the inquiry
+      raise HTTPException(status_code=400, detail=f'Invalid Request')
+    
+    await check_is_authorized_for_inquiry(decoded_token, inquiry.owner_appuser_id, inquiry.sitter_appuser_id)
 
   userPetsArray = await models.Pet.filter(appuser_id=appuser_id).order_by('id') # to stabilize display order when pet profiles are updated
   if userPetsArray:

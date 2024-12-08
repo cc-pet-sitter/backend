@@ -1,4 +1,5 @@
 #start server from root (backend) folder with "poetry run start"
+from random import randint
 from typing import List
 from fastapi import FastAPI, HTTPException, Request, status, Depends # type: ignore
 import uvicorn # type: ignore
@@ -295,8 +296,14 @@ async def get_pet_by_id(id: int):
   return pet
 
 @app.get("/pet", status_code=200) 
-async def get_all_pets(): 
-  petsArray = await models.Pet.all()
+async def get_all_pets(numOfPets: int = 500): 
+  petsPerPage = numOfPets
+  totalPets = await models.Pet.all().count()
+  totalPages = totalPets // petsPerPage
+  randomPage = randint(0, totalPages - 1)
+  offset = randomPage * petsPerPage
+
+  petsArray = await models.Pet.all().limit(numOfPets).offset(offset) # limit the results to a random subset of all pets
 
   if petsArray:
     return petsArray

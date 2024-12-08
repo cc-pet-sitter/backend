@@ -3,6 +3,7 @@ from faker import Faker # type: ignore
 from enum import Enum
 from random import choice, randint
 from datetime import datetime, timedelta
+import pet_sitter.locations as locations
 
 fake = Faker("en_US")  # English locale for names
 fake_jp = Faker("ja_JP")  # Japanese locale for addresses
@@ -315,74 +316,17 @@ bios = [
   'Provides pet care with a deep respect for the animal’s individual personality and needs.'
 ]
 
-japan_prefectures = {
-    "major": ["Saitama", "Chiba", "Tokyo", "Kanagawa"],
-    "minor": ["Hokkaido", "Aomori", "Iwate", "Miyagi", "Akita", "Yamagata", "Fukushima", 
-    "Ibaraki", "Tochigi", "Gunma", "Niigata", "Toyama", "Ishikawa", "Fukui", "Yamanashi", "Nagano", "Gifu", 
-    "Shizuoka", "Aichi", "Mie", "Shiga", "Kyoto", "Osaka", "Hyogo", "Nara", "Wakayama", "Tottori", "Shimane", "Okayama", "Hiroshima", "Yamaguchi", "Tokushima", "Kagawa", "Ehime", "Kochi", "Fukuoka", "Saga", "Nagasaki", "Kumamoto", "Oita", "Miyazaki", "Kagoshima", "Okinawa"]
-}
-
-japan_prefectures_cities = {
-    "Hokkaido": ["Sapporo", "Hakodate", "Asahikawa", "Otaru"],
-    "Aomori": ["Aomori", "Hachinohe"],
-    "Iwate": ["Morioka", "Ichinoseki"],
-    "Miyagi": ["Sendai", "Ishinomaki", "Shiogama"],
-    "Akita": ["Akita", "Yokote"],
-    "Yamagata": ["Yamagata", "Yonezawa"],
-    "Fukushima": ["Fukushima", "Koriyama", "Aizuwakamatsu"],
-    "Ibaraki": ["Mito", "Tsukuba", "Hitachi"],
-    "Tochigi": ["Utsunomiya", "Ashikaga", "Nikko"],
-    "Gunma": ["Maebashi", "Takasaki", "Isesaki"],
-    "Saitama": ["Saitama", "Kawaguchi", "Koshigaya", "Omiya"],
-    "Chiba": ["Chiba", "Narita", "Matsudo", "Kashiwa"],
-    "Tokyo": ["Shinjuku", "Shibuya", "Ikebukuro", "Chiyoda"],
-    "Kanagawa": ["Yokohama", "Kawasaki", "Sagamihara", "Odawara"],
-    "Niigata": ["Niigata", "Joetsu", "Nagaoka"],
-    "Toyama": ["Toyama", "Takaoka", "Uozu"],
-    "Ishikawa": ["Kanazawa", "Wajima", "Tsubata"],
-    "Fukui": ["Fukui", "Sakai"],
-    "Yamanashi": ["Kofu", "Fujiyoshida", "Minami Alps"],
-    "Nagano": ["Nagano", "Matsumoto", "Suwa"],
-    "Gifu": ["Gifu", "Takayama", "Ogaki"],
-    "Shizuoka": ["Shizuoka", "Hamamatsu", "Numazu"],
-    "Aichi": ["Nagoya", "Toyota", "Okazaki", "Ichinomiya"],
-    "Mie": ["Tsu", "Ise", "Yokkaichi"],
-    "Shiga": ["Otsu", "Kusatsu", "Hikone"],
-    "Kyoto": ["Kyoto", "Uji", "Kameoka"],
-    "Osaka": ["Osaka", "Sakai", "Takaishi", "Hirakata"],
-    "Hyogo": ["Kobe", "Himeji", "Amagasaki", "Takarazuka"],
-    "Nara": ["Nara", "Yamatokoriyama"],
-    "Wakayama": ["Wakayama", "Shingu"],
-    "Tottori": ["Tottori", "Kurayoshi"],
-    "Shimane": ["Matsue", "Izumo"],
-    "Okayama": ["Okayama", "Kurashiki", "Tamano"],
-    "Hiroshima": ["Hiroshima", "Kure", "Fukuyama"],
-    "Yamaguchi": ["Yamaguchi", "Shimonoseki"],
-    "Tokushima": ["Tokushima", "Anan"],
-    "Kagawa": ["Takamatsu", "Marugame"],
-    "Ehime": ["Matsuyama", "Imabari"],
-    "Kochi": ["Kochi", "Nankoku"],
-    "Fukuoka": ["Fukuoka", "Kitakyushu", "Kurume", "Nagasaki"],
-    "Saga": ["Saga", "Karatsu"],
-    "Nagasaki": ["Nagasaki", "Sasebo"],
-    "Kumamoto": ["Kumamoto", "Yatsushiro", "Amakusa"],
-    "Oita": ["Oita", "Beppu", "Nakatsu"],
-    "Miyazaki": ["Miyazaki", "Nichinan"],
-    "Kagoshima": ["Kagoshima", "Kanoya", "Izumi", "Satsumasendai"],
-    "Okinawa": ["Naha", "Okinawa"]
-}
-
 async def seed_db():
-  userAndInquiryCount = 400
+  userAndInquiryCount = 3000
   appusers = []
 
   for _ in range(userAndInquiryCount):
     prefectureCategory = fake.random_element(elements=["major", "minor"]) # uses major/minor to push more of the random results into Kanto
-    prefecture = fake.random_element(elements=japan_prefectures[prefectureCategory])
+    prefecture = fake.random_element(elements=locations.japan_prefectures[prefectureCategory])
 
     firstname = fake.first_name()
     lastname = fake.last_name()
-    username = firstname.lower() + "." + lastname.lower() + str(randint(0,99))
+    username = firstname.lower() + "." + lastname.lower() + str(randint(0,9999))
     domain = "@" + fake.email().split("@")[1]
     email = username + domain
 
@@ -399,13 +343,13 @@ async def seed_db():
         last_login=fake.date_time_this_year(True, False),
         profile_picture_src=fake.random_element(elements=people),
         prefecture=prefecture,
-        city_ward=fake.random_element(elements=japan_prefectures_cities[prefecture]),
+        city_ward=fake.random_element(elements=locations.japan_prefectures_cities[prefecture]),
         street_address=fake.street_address(),
         postal_code=fake_jp.zipcode(),  # Fake Japanese postal code
         account_language=fake.random_element(elements=["english", "japanese"]),
         english_ok=fake.boolean(),
         japanese_ok=fake.boolean(),
-        is_sitter=fake.boolean()
+        is_sitter=True #fake.boolean() for random results
     )
     appusers.append(appuser)
     print(f"Created Appuser {_+1}: {appuser.firstname} {appuser.lastname} who lives in {appuser.prefecture} and speaks {appuser.account_language}")
@@ -434,13 +378,13 @@ async def seed_db():
               available_date=available_date
             )
             print(f"Sitter {appuser.firstname} is available on {available_date}")
-      else:
-         randomPetCount = randint(1,3)
-         for i in range(randomPetCount):
-          await create_pet(appuser)
+         
+      randomPetCount = randint(1,3)
+      for i in range(randomPetCount):
+        await create_pet(appuser)
 
   for i in range(userAndInquiryCount):  # Create fake inquiries
-      owner = choice([user for user in appusers if not user.is_sitter])  # Ensure the owner is not a sitter
+      owner = choice([user for user in appusers])  # Owner can be any user since all appusers are owners by default
       sitter = choice([user for user in appusers if user.is_sitter])  # Ensure the sitter is a sitter
       
       start_date, end_date = generate_date_range()

@@ -28,7 +28,6 @@
 - Poetry is installed
 - PostgreSQL is installed
 - This repo has been cloned locally
-  - Firebase-adminsdk `.json` file has been obtained separately from a team member and added into the root directory of your local copy of this repo
 
 ### Initial Configuration
 
@@ -39,7 +38,7 @@
 3. In your `.env` file, add the following three variables and assign their values as follows:
   - `DATABASE_URL`: Value should be the path specific to your local database (starting with `postgres://`)
   
-  - `FIREBASE_CREDENTIALS_PATH`: Value should be the exact file name of the firebase-adminsdk `.json` file referenced above
+  - `FIREBASE_CREDENTIALS`: Value should be the entire firebase-adminsdk `.json` credential file encoded in base64, as received from an existing team member
   
   - `FRONTEND_BASE_URL`: Value should be `http://localhost:5173`
 

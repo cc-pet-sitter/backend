@@ -13,12 +13,16 @@ import firebase_admin
 from firebase_admin import credentials, auth
 from fastapi.middleware.cors import CORSMiddleware # type: ignore
 from datetime import datetime
+import base64
+import json
 
 load_dotenv()
 
 # Initialize Firebase Admin SDK
-cred = credentials.Certificate(os.getenv("FIREBASE_CREDENTIALS_PATH"))
-firebase_admin.initialize_app(cred)
+fb_cred_raw = json.loads(base64.b64decode(os.getenv("FIREBASE_CREDENTIALS")).decode())
+fb_cred = credentials.Certificate(fb_cred_raw)
+
+firebase_admin.initialize_app(fb_cred)
 
 app = FastAPI()
 

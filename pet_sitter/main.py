@@ -100,7 +100,7 @@ async def sign_user_up(reqBody: basemodels.SignUpBody, decoded_token: dict = Dep
   )
       
   if appuser:      
-      return {"status":"ok", "appuser": appuser}
+      return {"status":"ok", "appuser": basemodels.FullAppuserResponseObject.from_orm(appuser)}
   else:
       raise HTTPException(status_code=500, detail='Failed to Add User')
   
@@ -122,7 +122,7 @@ async def check_is_authorized_for_inquiry(decoded_token: dict, ownerID, sitterID
   if appuser.id != ownerID and appuser.id != sitterID: #the calling user is neither the inquiry's owner_appuser nor the inquiry's sitter_appuser
     raise HTTPException(status_code=403, detail="User Not Authorized")
     
-@app.post("/login", status_code=200, responses={401: {"description": "Invalid token data."}, 404: {"description": "User Not Found"}}) 
+@app.post("/login", response_model=basemodels.FullAppuserResponseObject, status_code=200, responses={401: {"description": "Invalid token data."}, 404: {"description": "User Not Found"}}) 
 async def log_user_in(decoded_token: dict = Depends(verify_firebase_token)):  
     # Extract email and uid from the decoded token
     email = decoded_token.get('email')
@@ -143,8 +143,9 @@ async def log_user_in(decoded_token: dict = Depends(verify_firebase_token)):
     else:
         raise HTTPException(status_code=404, detail='User Not Found')
   
-@app.get("/appuser/{id}", status_code=200, responses={404: {"description": "Appuser Not Found"}}) 
-async def get_appuser_by_id(id: int):   
+@app.get("/appuser/{id}", response_model=basemodels.FullAppuserResponseObject, status_code=200, responses={404: {"description": "Appuser Not Found"}}) 
+async def get_appuser_by_id(id: int, decoded_token: dict = Depends(verify_firebase_token)):
+  check_logged_in(decoded_token)
   appuser = await models.Appuser.filter(id=id).first() 
 
   if appuser:
@@ -153,7 +154,7 @@ async def get_appuser_by_id(id: int):
     raise HTTPException(status_code=404, detail=f'Appuser Not Found')
 
   
-@app.put("/appuser/{id}", status_code=200, responses={404: {"description": "Appuser Not Found"}, 403: {"description": "User Not Authorized"}}) 
+@app.put("/appuser/{id}", response_model=basemodels.FullAppuserResponseObject, status_code=200, responses={404: {"description": "Appuser Not Found"}, 403: {"description": "User Not Authorized"}}) 
 async def update_appuser_info(id: int, appuserReqBody: basemodels.UpdateAppuserBody, decoded_token: dict = Depends(verify_firebase_token)):  
   appuser = await models.Appuser.filter(id=id).first()
   
@@ -208,7 +209,7 @@ async def get_detailed_user_info_by_id(id: int):
   
   if appuser:
     response = {}
-    response["appuser"] = appuser
+    response["appuser"] = basemodels.ReducedAppuserResponseObject.from_orm(appuser)
 
     sitter = await models.Sitter.filter(appuser_id=id).first()
     if sitter: #add the sitter record to the response
@@ -360,7 +361,7 @@ async def get_all_matching_sitters(prefecture: str, city_ward: str | None = None
         for matchingSitter in matchingSitterArray:
           sitterAppuserPair = {}
           sitterAppuserPair["sitter"] = matchingSitter
-          sitterAppuserPair["appuser"] = matchingSitter.appuser
+          sitterAppuserPair["appuser"] = basemodels.ReducedAppuserResponseObject.from_orm(matchingSitter.appuser)
           responseArray.append(sitterAppuserPair)
           
         return responseArray

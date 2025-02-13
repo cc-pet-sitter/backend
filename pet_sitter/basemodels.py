@@ -102,3 +102,41 @@ class UpdatePetBody(BaseModel):
   profile_picture_src: str | None = None
   pet_bio_picture_src_list: str | None = None
   profile_bio: str | None = None
+
+class FullAppuserResponseObject(BaseModel):
+  id: int
+  firstname: str | None
+  lastname: str | None
+  email: str | None
+  profile_picture_src: str | None
+  prefecture: str | None
+  city_ward: str | None
+  street_address: str | None
+  postal_code: str | None
+  account_language: str | None
+  english_ok: bool | None
+  japanese_ok: bool | None
+  average_user_rating: float | None
+  user_profile_bio: str | None
+  user_bio_picture_src_list: str | None
+
+  class Config:
+    from_attributes = True
+
+class ReducedAppuserResponseObject(BaseModel):
+  id: int
+  firstname: str | None
+  lastname: str | None
+  profile_picture_src: str | None
+  prefecture: str | None
+  city_ward: str | None
+  postal_code: str | None
+  account_language: str | None
+  english_ok: bool | None
+  japanese_ok: bool | None
+  average_user_rating: float | None
+  user_profile_bio: str | None
+  user_bio_picture_src_list: str | None
+
+  class Config:
+    from_attributes = True

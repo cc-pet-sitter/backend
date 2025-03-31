@@ -15,6 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware # type: ignore
 from datetime import datetime
 import base64
 import json
+import pet_sitter.locations as locations
 
 load_dotenv()
 
@@ -153,6 +154,19 @@ async def get_appuser_by_id(id: int, decoded_token: dict = Depends(verify_fireba
   else:
     raise HTTPException(status_code=404, detail=f'Appuser Not Found')
 
+# returns english prefecture name if received in japanese
+def validate_prefecture(prefecture: str):
+  if prefecture in locations.prefecture_mapping:
+    return locations.prefecture_mapping[prefecture]
+  else:
+    return prefecture
+  
+# returns english city_ward name if received in japanese
+def validate_city_ward(city_ward: str, prefecture: str):
+  if city_ward in locations.city_mapping[prefecture].values():
+    return next(key for key, value in locations.city_mapping[prefecture].items() if value == city_ward)
+  else:
+    return city_ward
   
 @app.put("/appuser/{id}", response_model=basemodels.FullAppuserResponseObject, status_code=200, responses={404: {"description": "Appuser Not Found"}, 403: {"description": "User Not Authorized"}}) 
 async def update_appuser_info(id: int, appuserReqBody: basemodels.UpdateAppuserBody, decoded_token: dict = Depends(verify_firebase_token)):  
@@ -162,6 +176,9 @@ async def update_appuser_info(id: int, appuserReqBody: basemodels.UpdateAppuserB
     raise HTTPException(status_code=404, detail='Appuser Not Found')
   
   check_is_authorized(decoded_token, appuser.firebase_user_id)
+
+  appuserReqBody.prefecture = validate_prefecture(appuserReqBody.prefecture)
+  appuserReqBody.city_ward = validate_city_ward(appuserReqBody.city_ward, appuserReqBody.prefecture)
 
   await appuser.update_from_dict(appuserReqBody.dict(exclude_unset=True))
   await appuser.save()
@@ -326,9 +343,9 @@ async def delete_pet_by_id(id: int, decoded_token: dict = Depends(verify_firebas
   except Exception as e:
     raise HTTPException(status_code=500, detail=f'Failed to Delete Pet Profile: {str(e)}')
 
-#expects to receive the prefecture and city_ward of the user conducting the search + any booleans that are true (meaning the user want to find a sitter meeting those conditions)
+#expects to receive the prefecture and city_ward of the user conducting the search + any booleans that are true (meaning the user wants to find a sitter meeting those conditions)
 @app.get("/appuser-sitters", status_code=200) 
-async def get_all_matching_sitters(prefecture: str, city_ward: str | None = None, sitter_house_ok: bool | None = None, owner_house_ok: bool | None  = None, visit_ok: bool | None  = None, dogs_ok: bool | None  = None, cats_ok: bool | None  = None, fish_ok: bool | None  = None, birds_ok: bool | None  = None, rabbits_ok: bool | None  = None):     
+async def get_all_matching_sitters(prefecture: str, city_ward: str | None = None, sitter_house_ok: bool | None = None, owner_house_ok: bool | None  = None, visit_ok: bool | None  = None, dogs_ok: bool | None  = None, cats_ok: bool | None  = None, fish_ok: bool | None  = None, birds_ok: bool | None  = None, rabbits_ok: bool | None  = None):
       sitter_search_conditions = {}
       if sitter_house_ok:
         sitter_search_conditions["sitter_house_ok"] = True
@@ -347,10 +364,13 @@ async def get_all_matching_sitters(prefecture: str, city_ward: str | None = None
       if rabbits_ok:
         sitter_search_conditions["rabbits_ok"] = True
 
+      prefecture = validate_prefecture(prefecture)
+
       appuser_search_conditions = {}
       appuser_search_conditions["appuser__prefecture"] = prefecture
       
       if city_ward:
+        city_ward = validate_city_ward(city_ward, prefecture)
         appuser_search_conditions["appuser__city_ward"] = city_ward
 
       matchingSitterArray = await models.Sitter.filter(**sitter_search_conditions).select_related("appuser").filter(**appuser_search_conditions) ## Ex. Can use matchingSitterArray[0].appuser.email to get email from Appuser table for one user

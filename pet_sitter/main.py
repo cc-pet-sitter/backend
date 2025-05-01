@@ -481,7 +481,7 @@ async def get_all_messages_from_inquiry(id: int, decoded_token: dict = Depends(v
 
   await check_is_authorized_for_inquiry(decoded_token, inquiry.owner_appuser_id, inquiry.sitter_appuser_id)
 
-  inquiryMessagesArray = await models.Message.filter(inquiry_id=id)
+  inquiryMessagesArray = await models.Message.filter(inquiry_id=id).order_by('id')
   if inquiryMessagesArray:
     return inquiryMessagesArray
   else:

@@ -463,14 +463,14 @@ async def create_message(id: int, reqBody: basemodels.CreateMessageBody, decoded
       "content": message.content,
       "author_appuser_id": message.author_appuser_id,
       "recipient_appuser_id": message.recipient_appuser_id,
-      "time_sent": message.time_sent
+      "time_sent": message.time_sent.isoformat()
     }
 
     await inquiry_messages_manager.broadcast(broadcast_payload)
 
     return message
   except Exception as e:
-    raise HTTPException(status_code=500, detail=f'Failed to Add Message: {str(e)}')
+    raise HTTPException(status_code=500, detail=f'Failed to Add (or Broadcast) Message: {str(e)}')
   
 @app.get("/inquiry/{id}/message", status_code=200, responses={403: {"description": "User Not Authorized"}, 404: {"description": "Inquiry Does Not Exist"}}) 
 async def get_all_messages_from_inquiry(id: int, decoded_token: dict = Depends(verify_firebase_token)):
@@ -488,26 +488,26 @@ async def get_all_messages_from_inquiry(id: int, decoded_token: dict = Depends(v
     return []
   
 @app.websocket("/ws/inquiry/{id}")
-async def get_realtime_messages_from_inquiry(websocket: WebSocket, id: int, decoded_token: dict = Depends(verify_firebase_token)):
+async def get_realtime_messages_from_inquiry(websocket: WebSocket, id: int):
   try:
     inquiry = await models.Inquiry.filter(id=id).first()
     
     if not inquiry:
-        raise HTTPException(status_code=404, detail=f'Inquiry Does Not Exist')
+      raise HTTPException(status_code=404, detail=f'Inquiry Does Not Exist')
     
-    await check_is_authorized_for_inquiry(decoded_token, inquiry.owner_appuser_id, inquiry.sitter_appuser_id)
+    #await check_is_authorized_for_inquiry(decoded_token, inquiry.owner_appuser_id, inquiry.sitter_appuser_id)
     await inquiry_messages_manager.connect(id, websocket)
 
     try:
-        while True:
-            await websocket.receive_json()
+      while True:
+        await websocket.receive_json()
     except WebSocketDisconnect:
-        inquiry_messages_manager.disconnect(id, websocket)
+      inquiry_messages_manager.disconnect(id, websocket)
   except HTTPException as e:
     await websocket.send_text('{"status_code": 400, "detail": "Inquiry Does Not Exist or User Not Authorized"}')
 
     if websocket.client_state != "DISCONNECTED":
-        await websocket.close(code=1008)
+      await websocket.close(code=1008)
   
 @app.get("/inquiry/{id}/pet", status_code=200, responses={403: {"description": "User Not Authorized"}, 404: {"description": "Inquiry Does Not Exist"}}) 
 async def get_all_pets_from_inquiry(id: int, decoded_token: dict = Depends(verify_firebase_token)):

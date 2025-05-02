@@ -15,7 +15,7 @@ from datetime import datetime
 import base64
 import json
 import pet_sitter.locations as locations
-from messaging import inquiry_messages_manager
+from pet_sitter.messaging import inquiry_messages_manager
 
 load_dotenv()
 

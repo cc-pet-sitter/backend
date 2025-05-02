@@ -495,7 +495,6 @@ async def get_realtime_messages_from_inquiry(websocket: WebSocket, id: int):
     if not inquiry:
       raise HTTPException(status_code=404, detail=f'Inquiry Does Not Exist')
     
-    #await check_is_authorized_for_inquiry(decoded_token, inquiry.owner_appuser_id, inquiry.sitter_appuser_id)
     await inquiry_messages_manager.connect(id, websocket)
 
     try:

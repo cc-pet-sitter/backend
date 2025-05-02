@@ -1,7 +1,6 @@
-#start server from root (backend) folder with "poetry run start"
 from random import randint
 from typing import List
-from fastapi import FastAPI, HTTPException, Request, status, Depends # type: ignore
+from fastapi import FastAPI, HTTPException, Request, status, Depends, WebSocket, WebSocketDisconnect # type: ignore
 import uvicorn # type: ignore
 from tortoise import Tortoise # type: ignore
 from dotenv import load_dotenv # type: ignore
@@ -16,10 +15,10 @@ from datetime import datetime
 import base64
 import json
 import pet_sitter.locations as locations
+from messaging import inquiry_messages_manager
 
 load_dotenv()
 
-# Initialize Firebase Admin SDK
 fb_cred_raw = json.loads(base64.b64decode(os.getenv("FIREBASE_CREDENTIALS")).decode())
 fb_cred = credentials.Certificate(fb_cred_raw)
 
@@ -27,7 +26,6 @@ firebase_admin.initialize_app(fb_cred)
 
 app = FastAPI()
 
-# Enable CORS for frontend interaction
 origins = [
   os.getenv("FRONTEND_BASE_URL"),
   "http://localhost:5173",
@@ -41,7 +39,6 @@ app.add_middleware(
   allow_headers=["*"],
 )
 
-# Dependency for Firebase authentication
 async def verify_firebase_token(request: Request):
   auth_header = request.headers.get("Authorization")
   if not auth_header:
@@ -85,16 +82,13 @@ async def main_route():
 
 @app.post("/signup", status_code=201, responses={401: {"description": "Email mismatch."}, 400: {"description": "User already exists in the database."}, 500: {"description": "Failed to Add User"}}) 
 async def sign_user_up(reqBody: basemodels.SignUpBody, decoded_token: dict = Depends(verify_firebase_token)):  
-  # Verify that the email in the token matches the signup email
   if decoded_token.get('email') != reqBody.email:
       raise HTTPException(status_code=401, detail="Email mismatch.")
   
-  # Check if user already exists in the database
   existing_user = await models.Appuser.filter(email=reqBody.email).first()
   if existing_user:
       raise HTTPException(status_code=400, detail="User already exists in the database.")
 
-  # Create user in the database with firebase_user_id and more data
   appuser = await models.Appuser.create(
       **reqBody.dict(),
       firebase_user_id=decoded_token['uid']
@@ -125,21 +119,17 @@ async def check_is_authorized_for_inquiry(decoded_token: dict, ownerID, sitterID
     
 @app.post("/login", response_model=basemodels.FullAppuserResponseObject, status_code=200, responses={401: {"description": "Invalid token data."}, 404: {"description": "User Not Found"}}) 
 async def log_user_in(decoded_token: dict = Depends(verify_firebase_token)):  
-    # Extract email and uid from the decoded token
     email = decoded_token.get('email')
     uid = decoded_token.get('uid')
     
     if not email or not uid:
         raise HTTPException(status_code=401, detail="Invalid token data.")
     
-    # Fetch user from the database
     user = await models.Appuser.filter(email=email, firebase_user_id=uid).first()
     if user:
-        # Update last login timestamp
         user.last_login = datetime.now()
         await user.save()
     
-        # Fetch other user data as needed
         return user
     else:
         raise HTTPException(status_code=404, detail='User Not Found')
@@ -466,9 +456,21 @@ async def create_message(id: int, reqBody: basemodels.CreateMessageBody, decoded
     inquiry = await models.Inquiry.filter(id=id).first()
     await check_is_authorized_for_inquiry(decoded_token, inquiry.owner_appuser_id, inquiry.sitter_appuser_id)
     message = await models.Message.create(inquiry_id=id, **reqBody.dict())
+
+    broadcast_payload = {
+      "id": message.id,
+      "inquiry_id": message.inquiry_id,
+      "content": message.content,
+      "author_appuser_id": message.author_appuser_id,
+      "recipient_appuser_id": message.recipient_appuser_id,
+      "time_sent": message.time_sent.isoformat()
+    }
+
+    await inquiry_messages_manager.broadcast(broadcast_payload)
+
     return message
   except Exception as e:
-    raise HTTPException(status_code=500, detail=f'Failed to Add Message: {str(e)}')
+    raise HTTPException(status_code=500, detail=f'Failed to Add (or Broadcast) Message: {str(e)}')
   
 @app.get("/inquiry/{id}/message", status_code=200, responses={403: {"description": "User Not Authorized"}, 404: {"description": "Inquiry Does Not Exist"}}) 
 async def get_all_messages_from_inquiry(id: int, decoded_token: dict = Depends(verify_firebase_token)):
@@ -479,11 +481,32 @@ async def get_all_messages_from_inquiry(id: int, decoded_token: dict = Depends(v
 
   await check_is_authorized_for_inquiry(decoded_token, inquiry.owner_appuser_id, inquiry.sitter_appuser_id)
 
-  inquiryMessagesArray = await models.Message.filter(inquiry_id=id)
+  inquiryMessagesArray = await models.Message.filter(inquiry_id=id).order_by('id')
   if inquiryMessagesArray:
     return inquiryMessagesArray
   else:
     return []
+  
+@app.websocket("/ws/inquiry/{id}")
+async def get_realtime_messages_from_inquiry(websocket: WebSocket, id: int):
+  try:
+    inquiry = await models.Inquiry.filter(id=id).first()
+    
+    if not inquiry:
+      raise HTTPException(status_code=404, detail=f'Inquiry Does Not Exist')
+    
+    await inquiry_messages_manager.connect(id, websocket)
+
+    try:
+      while True:
+        await websocket.receive_json()
+    except WebSocketDisconnect:
+      inquiry_messages_manager.disconnect(id, websocket)
+  except HTTPException as e:
+    await websocket.send_text('{"status_code": 400, "detail": "Inquiry Does Not Exist or User Not Authorized"}')
+
+    if websocket.client_state != "DISCONNECTED":
+      await websocket.close(code=1008)
   
 @app.get("/inquiry/{id}/pet", status_code=200, responses={403: {"description": "User Not Authorized"}, 404: {"description": "Inquiry Does Not Exist"}}) 
 async def get_all_pets_from_inquiry(id: int, decoded_token: dict = Depends(verify_firebase_token)):

@@ -119,6 +119,10 @@ class FullAppuserResponseObject(BaseModel):
   average_user_rating: float | None
   user_profile_bio: str | None
   user_bio_picture_src_list: str | None
+  is_sitter: bool | None
+  account_created: datetime | None
+  last_updated: datetime | None
+  last_login: datetime | None
 
   class Config:
     from_attributes = True
@@ -137,6 +141,10 @@ class ReducedAppuserResponseObject(BaseModel):
   average_user_rating: float | None
   user_profile_bio: str | None
   user_bio_picture_src_list: str | None
+  is_sitter: bool | None
+  account_created: datetime | None
+  last_updated: datetime | None
+  last_login: datetime | None
 
   class Config:
     from_attributes = True

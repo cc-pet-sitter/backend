@@ -2,6 +2,7 @@
 
 - Live on Render at [backend.mugi.pet](https://backend.mugi.pet)
 - API documentation can be found at [backend.mugi.pet/docs](https://backend.mugi.pet/docs)
+- Database schema can be found at [dbdiagram.io/d/pet-sitter-673b448ee9daa85acad632f0](https://dbdiagram.io/d/pet-sitter-673b448ee9daa85acad632f0)
 
 ## About the Frontend
 
